@@ -5,7 +5,10 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.io.IOException;
+import java.net.MalformedURLException;
 import java.net.URL;
+import java.util.Arrays;
+import java.util.HashMap;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class Restaurant {
@@ -63,4 +66,29 @@ public class Restaurant {
 
         return restaurants;
     }
+
+
+    public static Restaurant getRestaurantByItem(String orderItem) {
+        try {
+            Restaurant[] restaurants = getRestaurantsFromRestServer(new URL("https://ilp-rest.azurewebsites.net/"));
+            for (Restaurant restaurant : restaurants){
+                for (Menu menu : restaurant.getMenu()) {
+                    if (orderItem.equals(menu.getName())) {
+                        return restaurant;
+                    }
+                }
+            }
+
+            return null;
+        } catch (MalformedURLException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    public static void main(String[] args) {
+        System.out.println(getRestaurantByItem("Meat Lover"));
+
+    }
+
+
 }
