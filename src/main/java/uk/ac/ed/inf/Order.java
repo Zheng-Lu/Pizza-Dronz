@@ -4,6 +4,7 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.net.MalformedURLException;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.*;
@@ -18,11 +19,12 @@ public class Order {
     private final String creditCardNumber;
     private final String creditCardExpiry;
     private final String cvv;
-    private final List<String> orderItems;
+    private final String[] orderItems;
     private final int priceTotalInPence;
+    private String orderOutcome;
 
     public Order(String orderNo, String orderDate, LngLat restaurantLoc, String creditCardNumber, String creditCardExpiry,
-                 String cvv, List<String> orderItems, int priceTotalInPence) {
+                 String cvv, String[] orderItems, int priceTotalInPence, String orderOutcome) {
 
         this.orderNo = orderNo;
         this.orderDate = orderDate;
@@ -32,6 +34,8 @@ public class Order {
         this.cvv = cvv;
         this.orderItems = orderItems;
         this.priceTotalInPence = priceTotalInPence;
+        this.orderOutcome = orderOutcome;
+
     }
 
     public String getOrderNo() {
@@ -58,7 +62,7 @@ public class Order {
         return this.cvv;
     }
 
-    public List<String> getOrderItems() {
+    public String[] getOrderItems() {
         return this.orderItems;
     }
 
@@ -66,7 +70,15 @@ public class Order {
         return this.priceTotalInPence;
     }
 
+    public String getOrderOutcome() {
+        return this.orderOutcome;
+    }
 
+    public double getDistance(){
+        return this.restaurantLoc.distanceTo(Map.APPLETON_TOWER);
+    }
+
+    public void markDelivered() {this.orderOutcome = OrderOutcome.Delivered.toString();}
 
 
     public enum OrderOutcome {
@@ -116,14 +128,19 @@ public class Order {
      * @return true if given expiry date is valid, or false otherwise
      * @throws NullPointerException If the given input is null.
      */
-    public static boolean isValidCardExpiry(String expiryDate, String orderMonth, String orderYear) throws ParseException {
-        String orderDate = orderMonth + "/" + orderYear;
+    public static boolean isValidCardExpiry(String expiryDate, String orderMonth, String orderYear){
         SimpleDateFormat cardExpiryFormat = new SimpleDateFormat("MM/yy");
         SimpleDateFormat orderDateFormat = new SimpleDateFormat("MM/yyyy");
         orderDateFormat.setLenient(false);
         cardExpiryFormat.setLenient(false);
-        Date expiry = cardExpiryFormat.parse(expiryDate);
-        Date currOrder = orderDateFormat.parse(orderDate);
+        Date expiry = null;
+        Date currOrder = null;
+        try {
+            expiry = cardExpiryFormat.parse(expiryDate);
+            currOrder = orderDateFormat.parse(orderMonth + "/" + orderYear);
+        } catch (ParseException e) {
+            return false;
+        }
 
         return currOrder.before(expiry) || currOrder.equals(expiry);
     }
@@ -195,7 +212,6 @@ public class Order {
 
     /**
      * get the delivery cost, including delivery charge of 1 pound (100 pence)
-     * @param participants restaurants that participate in pizza delivery
      * @param orderItems the ordered pizza being delivery
      * @param creditCardNumber
      * @param creditCardExpiry
@@ -213,9 +229,11 @@ public class Order {
                                       String cvv,
                                       String orderDate,
                                       int priceTotalInPence) throws ParseException {
+
         String[] date = orderDate.split("-");
         String year = date[0];
         String month = date[1];
+
 
         try{
             int calculatedTotal = getDeliveryCost(participants, orderItems);
@@ -238,27 +256,50 @@ public class Order {
             return String.valueOf(OrderOutcome.InvalidCvv);
         }
 
-        return "";
+        return String.valueOf(OrderOutcome.ValidButNotDelivered);
     }
 
 
+//    public static List<Order> initializeOrders(Restaurant[] restaurants, String year, String month, String day) throws JSONException, ParseException {
+//        DataReadWrite dataReadWrite = new DataReadWrite();
+//        List<JSONObject> rawOrders = dataReadWrite.readOrders(year,month,day);
+//        List<Order> orders = new ArrayList<>();
+//
+//        for (JSONObject rawOrder: rawOrders) {
+//            JSONArray numItems = (JSONArray) rawOrder.get("orderItems");
+//            String[] orderItems = new String[numItems.length()];
+//
+//            for (int i = 0; i < numItems.length(); i++) {
+//                orderItems[i] = numItems.get(i).toString();
+//            }
+//
+//            Restaurant restaurant = Restaurant.getRestaurantFromItem(restaurants, orderItems[0]);
+//            LngLat restaurantLoc = new LngLat(restaurant.getLongitude(), restaurant.getLatitude());
+//
+//            String orderNo = rawOrder.get("orderNo").toString();
+//            String orderDate = rawOrder.get("orderDate").toString();
+//            String creditCardNumber = rawOrder.get("creditCardNumber").toString();
+//            String creditCardExpiry = rawOrder.get("creditCardExpiry").toString();
+//            String cvv = rawOrder.get("cvv").toString();
+//            int priceTotalInPence = (int) rawOrder.get("priceTotalInPence");
+//
+//            String orderOutcome = getOrderOutcome(restaurants, orderItems, creditCardNumber, creditCardExpiry,
+//                    cvv, orderDate, priceTotalInPence);
+//
+//            orders.add(new Order(orderNo, orderDate, restaurantLoc, creditCardNumber, creditCardExpiry,
+//                    cvv, orderItems, priceTotalInPence, orderOutcome));
+//        }
+//
+//        return orders;
+//    }
 
-    public static void main(String[] args) throws JSONException, ParseException {
-        ReadData readData = new ReadData();
-        JSONArray jsonArray = readData.readOrders("2023","01", "31");
-         for (int i = 0; i < jsonArray.length(); i++) {
-            JSONObject object = jsonArray.getJSONObject(i);
-            String creditCardNumber = object.get("creditCardNumber").toString();
-            System.out.println(creditCardNumber.length() + ":" + isValidCardNumber(creditCardNumber));
+    public static void main(String[] args) throws JSONException, ParseException, MalformedURLException {
+        String expiryDate = "13/02";
+        SimpleDateFormat cardExpiryFormat = new SimpleDateFormat("MM/yy");
+        cardExpiryFormat.setLenient(false);
+        Date expiry = cardExpiryFormat.parse(expiryDate);
+        System.out.println(expiry);
 
-            String cvv = object.get("cvv").toString();
-            System.out.println(cvv + ":" + isValidCVV(cvv));
-
-            String expiryDate = object.get("creditCardExpiry").toString();
-            System.out.println(expiryDate + ":" + isValidCardExpiry(expiryDate, "01", "2023"));
-        }
-
-        System.out.println(isValidCardExpiry("02/23", "02", "2023"));
     }
 
 }

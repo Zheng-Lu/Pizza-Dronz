@@ -7,6 +7,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.Arrays;
 import java.util.HashMap;
 
@@ -68,27 +70,30 @@ public class Restaurant {
     }
 
 
-    public static Restaurant getRestaurantByItem(String orderItem) {
-        try {
-            Restaurant[] restaurants = getRestaurantsFromRestServer(new URL("https://ilp-rest.azurewebsites.net/"));
-            for (Restaurant restaurant : restaurants){
-                for (Menu menu : restaurant.getMenu()) {
-                    if (orderItem.equals(menu.getName())) {
-                        return restaurant;
-                    }
+    // TODO
+    public static Restaurant getRestaurantByItem(Restaurant[] restaurants, String orderItem) {
+
+        for (Restaurant restaurant : restaurants){
+            for (Menu menu : restaurant.getMenu()) {
+                if (orderItem.equals(menu.getName())) {
+                    return restaurant;
                 }
             }
-
-            return null;
-        } catch (MalformedURLException e) {
-            throw new RuntimeException(e);
         }
+
+        return null;
     }
 
-    public static void main(String[] args) {
-        System.out.println(getRestaurantByItem("Meat Lover"));
+    public static Restaurant getRestaurantFromItem(Restaurant[] restaurants, String itemName) {
+        HashMap<String, Restaurant> restaurantItemMap = new HashMap<>();
+
+        for (Restaurant restaurant : restaurants){
+            for (Menu menu : restaurant.getMenu()){
+                restaurantItemMap.put(menu.getName(), restaurant);
+            }
+        }
+
+        return restaurantItemMap.get(itemName);
 
     }
-
-
 }

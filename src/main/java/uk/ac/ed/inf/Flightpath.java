@@ -17,17 +17,15 @@ public class Flightpath {
      * @param angle current angle of the drone
      * @param toLongitude next longitude coordinate of the drone
      * @param toLatitude next latitude coordinate of the drone
-     * @param  ticksSinceStartOfCalculation next latitude coordinate of the drone
      */
     public Flightpath(String orderNo, double fromLongitude, double fromLatitude,
-                      double angle, double toLongitude, double toLatitude,
-                      int ticksSinceStartOfCalculation){
+                      double angle, double toLongitude, double toLatitude){
         this.orderNo = orderNo;
         this.fromLongitude = fromLongitude;
         this.fromLatitude = fromLatitude;
         this.angle = angle;
         this.toLongitude = toLongitude;
         this.toLatitude = toLatitude;
-        this.ticksSinceStartOfCalculation =  ticksSinceStartOfCalculation;
+        this.ticksSinceStartOfCalculation =  0;
     }
 }

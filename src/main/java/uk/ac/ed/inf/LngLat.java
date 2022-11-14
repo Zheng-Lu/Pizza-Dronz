@@ -1,16 +1,32 @@
 package uk.ac.ed.inf;
 
+import java.util.HashMap;
 import java.util.List;
+import java.awt.geom.Line2D;
+import java.util.Objects;
+
+import com.mapbox.geojson.Polygon;
+import com.mapbox.geojson.Point;
 
 public class LngLat {
 
     /* Constants */
     public final static double DISTANCE_TOLERANCE = 0.00015;
     public final static double LENGTH_OF_MOVE = 0.00015;
+    public final static double HOVERING = -999;
+    public final static HashMap<Direction, Double> directionHashMap = initMap();
+    private static HashMap<Direction, Double> initMap() {
+        HashMap<Direction, Double> hashmap = new HashMap<>();
+        for (Direction dir : Direction.values()){
+            hashmap.put(dir, dir.angle);
+        }
+        return hashmap;
+    }
 
     /** coordinate of the drone */
-    public final double lng;
-    public final double lat;
+    public double lng;
+    public double lat;
+    private double angle;
 
     /**
      * Create a coordinate instance for the drone.
@@ -20,7 +36,26 @@ public class LngLat {
     public LngLat(double lng, double lat) {
         this.lng = lng;
         this.lat = lat;
+        // define initial angle to be zero
+        this.angle = 0.0;
+    }
 
+    /** getters and setters */
+    public double getLng(){
+        return this.lng;
+    }
+
+    public double getLat(){
+        return this.lat;
+    }
+
+    public double getAngle(){
+        return this.angle;
+    }
+
+    public void setLngLat(LngLat newPos){
+        this.lng = newPos.getLng();
+        this.lat = newPos.getLat();
     }
 
     /**
@@ -124,7 +159,8 @@ public class LngLat {
         South (270),
         South_South_East(292.5),
         South_East (315),
-        East_South_East (337.5);
+        East_South_East (337.5),
+        Null (-999);
 
         private final double angle;
 
@@ -141,16 +177,138 @@ public class LngLat {
      */
     public LngLat nextPosition (Direction direction){
         // when drone is hovering
-        if (direction == null){
+        if (direction.angle == -999){
             return this;
         } else {
-            double angle = Math.toRadians (direction.angle);
+            double angle = Math.toRadians(direction.angle);
             double newLong = this.lng + Math.cos(angle) * LENGTH_OF_MOVE;
             double newLat = this.lat + Math.sin(angle) * LENGTH_OF_MOVE;
 
             return new LngLat (newLong, newLat);
         }
     }
+
+
+    /**
+     * Get the valid angle of the drone to travel next
+     *
+     * @param nextPos the desired position
+     * @return valid angle of the drone
+     */
+    private double calculateAngle(LngLat nextPos){
+        double x1 = this.lng;
+        double x2 = nextPos.getLng();
+        double y1 = this.lat;
+        double y2 = nextPos.getLat();
+
+        double radAngle = Math.atan2(x2 - x1, y2 - y1);
+        int rawAngle = (int) Math.toDegrees(radAngle);
+
+        // set the angle valid
+        if (rawAngle < 0){
+            rawAngle += 360;
+        } else if (rawAngle >= 360){
+            rawAngle -= 360;
+        }
+        if (rawAngle >= 0 && rawAngle < 90) {
+            rawAngle = 90 - rawAngle;
+        } else if (rawAngle >= 90 && rawAngle < 360) {
+            rawAngle = 450 - rawAngle;
+        }
+
+        double angle = Math.round(rawAngle/22.5) * 22.5;
+
+        if (angle == 360){
+            angle = 0;
+        }
+
+        return angle;
+    }
+
+
+    private Direction getDirectionByAngle(double angle){
+        for (Direction direction: directionHashMap.keySet()) {
+            if (Objects.equals(angle, direction.angle)){
+                return direction;
+            }
+        }
+        return null;
+    }
+
+
+    /**
+     * Test if going to the next position from current position is outside No-Fly-Zone
+     *
+     * @param map the map of the drone navigating
+     * @param nextPos the position to be tested
+     * @return outside No-Fly-Zone or not
+     */
+    public boolean isOutsideNoFlyZone(Map map, LngLat nextPos){
+        Line2D path = new Line2D.Double(this.lat, this.lng,
+                nextPos.getLat(), nextPos.getLng());
+        List<Polygon> noFlyZones = map.getNoFlyZones();
+
+        // for every line segment of every zone,
+        // test if it intersects with the line segment of the current move
+        for (Polygon zone: noFlyZones) {
+            List<Point> points = zone.coordinates().get(0);
+            for (int i = 0; i < points.size() - 1; i++) {
+                int j = (i + 1) % points.size();
+                Point p1 = points.get(i);
+                Point p2 = points.get(j);
+                Line2D noFlySegment = new Line2D.Double(p1.latitude(), p1.longitude(),
+                        p2.latitude(), p2.longitude());
+                if (path.intersectsLine(noFlySegment)) {
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+
+
+    /**
+     * Calculate the next valid move to given position,
+     * outside no-fly-zone and inside drone confinment area,
+     * if next move not valid, modify angle in +10,-10, +20,-20
+     *
+     * @param map the map to traverse
+     * @param destPos desired position of the drone
+     * @return the next valid move
+     */
+    public LngLat move(Map map, LngLat destPos){
+        double preAngle = this.angle;
+        this.angle = calculateAngle(destPos);
+        LngLat nextPos = nextPosition(getDirectionByAngle(this.angle));
+        double adjustment = 22.5;
+
+        // if the move is not valid, increase the angle until it is valid
+        // modify angle in +22.5,-22.5, +22.5,-22.5
+        while ( !(isOutsideNoFlyZone(map, nextPos))){
+            this.angle += adjustment;
+            // go back to previous location is forbidden,
+            // since it might cause the drone trap in a point
+            if (Math.abs(preAngle - this.angle) == 180){
+                this.angle += 22.5*(adjustment/Math.abs(adjustment));
+            }
+            if (this.angle >= 360){
+                this.angle -= 360;
+            }
+            if (this.angle < 0){
+                this.angle += 360;
+            }
+
+            nextPos = nextPosition(getDirectionByAngle(this.angle));
+            adjustment = - (adjustment + 22.5*(adjustment/Math.abs(adjustment)));
+
+        }
+        return nextPos;
+    }
+
+
+
+
+
 }
 
 
