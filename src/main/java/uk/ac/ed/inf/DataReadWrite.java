@@ -9,10 +9,9 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.net.http.HttpResponse.BodyHandlers;
 
+import com.mapbox.geojson.*;
 import org.json.JSONArray;
 import org.json.JSONException;
-import com.mapbox.geojson.Feature;
-import com.mapbox.geojson.FeatureCollection;
 import org.json.JSONObject;
 
 public class DataReadWrite {
@@ -22,7 +21,6 @@ public class DataReadWrite {
     /**
      * Connect to the web server by a given url
      * @param urlString url of the web
-     * @throws IOException if the web server could not be accessed
      */
     private static void connect(String urlString){
 
@@ -53,8 +51,7 @@ public class DataReadWrite {
         String urlString = "https://ilp-rest.azurewebsites.net/" + "no-fly-zones.geojson";
         connect (urlString);
 
-        List<Feature> noFlyZones = FeatureCollection.fromJson(response.body()).features();
-        return noFlyZones;
+        return FeatureCollection.fromJson(response.body()).features();
     }
 
     /**
@@ -65,8 +62,7 @@ public class DataReadWrite {
         String urlString = "https://ilp-rest.azurewebsites.net/" + "restaurants.geojson";
         connect (urlString);
 
-        List<Feature> restaurants = FeatureCollection.fromJson(response.body()).features();
-        return restaurants;
+        return FeatureCollection.fromJson(response.body()).features();
     }
 
 
@@ -74,8 +70,7 @@ public class DataReadWrite {
         String urlString = "https://ilp-rest.azurewebsites.net/" + "all.geojson";
         connect (urlString);
 
-        List<Feature> landmarks = FeatureCollection.fromJson(response.body()).features();
-        return landmarks;
+        return FeatureCollection.fromJson(response.body()).features();
     }
 
     /**
@@ -100,6 +95,7 @@ public class DataReadWrite {
         return orderObjects;
     }
 
+
     // TODO: add ticksSinceStartOfCalculation into file
     /**
      * Write the flightpath json file containing all flight steps made by the drone in a given day
@@ -107,6 +103,8 @@ public class DataReadWrite {
      */
     public void writeFlightpathJson(List<Flightpath> flightpaths, String year,
                                     String month, String day) {
+        String fileName = "flightpath-" + year + "-" + month + "-" + day + ".json";
+
         //Creating a JSONArray object
         JSONArray jsonArray = new JSONArray();
 
@@ -127,14 +125,14 @@ public class DataReadWrite {
             throw new RuntimeException(e);
         }
         try {
-            FileWriter file = new FileWriter("flightpath-" + year + "-" + month + "-" + day + ".json");
+            FileWriter file = new FileWriter(fileName);
             file.write(jsonArray.toString());
             file.close();
         } catch (IOException e) {
             System.err.println("Fatal error: Unable to generate flightpath json");
             e.printStackTrace();
         }
-        System.out.println("JSON file created");
+        System.out.println(fileName + " created");
     }
 
 
@@ -144,6 +142,8 @@ public class DataReadWrite {
      */
     public void writeDeliveriesJson(List<Order> orders, String year,
                                     String month, String day) {
+        String fileName = "deliveries-" + year + "-" + month + "-" + day + ".json";
+
         //Creating a JSONArray object
         JSONArray jsonArray = new JSONArray();
 
@@ -161,13 +161,60 @@ public class DataReadWrite {
             throw new RuntimeException(e);
         }
         try {
-            FileWriter file = new FileWriter("deliveries-" + year + "-" + month + "-" + day + ".json");
+            FileWriter file = new FileWriter(fileName);
             file.write(jsonArray.toString());
             file.close();
         } catch (IOException e) {
             System.err.println("Fatal error: Unable to generate deliveries json");
             e.printStackTrace();
         }
-        System.out.println("JSON file created");
+        System.out.println(fileName + " created");
+    }
+
+
+    /**
+     * Create the flightpath geojson file
+     * @param allFlightpath all flightpath of the day
+     * @param year required year
+     * @param month required month
+     * @param day required day
+     */
+    public void writeDroneGeojson(List<Flightpath> allFlightpath, String year,
+                                  String month, String day) {
+        String fileName = "drone-" + year + "-" + month + "-" + day + ".geojson";
+
+        // convert flightpath objects to linestring
+        List<Point> flightpathPoints = new ArrayList<>();
+        flightpathPoints.add(Point.fromLngLat(allFlightpath.get(0).fromLongitude, allFlightpath.get(0).fromLatitude));
+
+        for (Flightpath fp : allFlightpath){
+            flightpathPoints.add(Point.fromLngLat(fp.toLongitude, fp.toLatitude));
+        }
+        LineString flightpathLineString = LineString.fromLngLats(flightpathPoints);
+        Feature flightpathFeature = Feature.fromGeometry(flightpathLineString);
+
+        // convert flightpath to one feature in a feature collection
+        ArrayList<Feature> flightpathList = new ArrayList<>();
+        flightpathList.add(flightpathFeature);
+
+        DataReadWrite dataReadWrite = new DataReadWrite();
+        ArrayList<Feature> landmarks = (ArrayList<Feature>) dataReadWrite.readLandmarks();
+
+        flightpathList.addAll(landmarks);
+
+        FeatureCollection flightpathFC = FeatureCollection.fromFeatures(flightpathList);
+
+        String flightpathJson = flightpathFC.toJson();
+
+        // write the geojson file
+        try {
+            FileWriter file = new FileWriter(fileName);
+            file.write(flightpathJson);
+            file.close();
+        } catch (IOException e) {
+            System.err.println("Fatal error: Unable to generate Drone Geojson");
+            e.printStackTrace();
+        }
+        System.out.println(fileName + " created");
     }
 }

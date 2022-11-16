@@ -7,17 +7,12 @@ import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.time.Duration;
 import java.time.Instant;
-import java.util.ArrayList;
 import java.util.List;
-import java.io.FileWriter;
-import java.io.IOException;
 
-import com.mapbox.geojson.Feature;
-import com.mapbox.geojson.FeatureCollection;
-import com.mapbox.geojson.Point;
-import com.mapbox.geojson.LineString;
 import org.json.JSONException;
-import com.mapbox.geojson.Geometry;
+
+import static uk.ac.ed.inf.Order.OrderOutcome.ValidButNotDelivered;
+
 
 /**
  * Hello world!
@@ -59,53 +54,6 @@ public class App
             return false;
         }
     }
-
-    /**
-     * Create the flightpath geojson file
-     * @param allFlightpath all flightpath of the day
-     * @param year required year
-     * @param month required month
-     * @param day required day
-     * @throws IOException when failed to create Geojson file
-     */
-    private static void createGeojsonFile(List<Flightpath> allFlightpath, String year,
-                                          String month, String day) {
-        // convert flightpath objects to linestring
-        List<Point> flightpathPoints = new ArrayList<>();
-        flightpathPoints.add(Point.fromLngLat(allFlightpath.get(0).fromLongitude, allFlightpath.get(0).fromLatitude));
-
-        for (Flightpath fp : allFlightpath){
-            flightpathPoints.add(Point.fromLngLat(fp.toLongitude, fp.toLatitude));
-        }
-        LineString flightpathLineString = LineString.fromLngLats(flightpathPoints);
-        Feature flightpathFeature = Feature.fromGeometry( (Geometry) flightpathLineString );
-
-        // convert flightpath to one feature in a feature collection
-        ArrayList<Feature> flightpathList = new ArrayList<Feature>();
-        flightpathList.add(flightpathFeature);
-
-        DataReadWrite dataReadWrite = new DataReadWrite();
-        ArrayList<Feature> landmarks = (ArrayList<Feature>) dataReadWrite.readLandmarks();
-
-        flightpathList.addAll(landmarks);
-
-        FeatureCollection flightpathFC = FeatureCollection.fromFeatures(flightpathList);
-
-        String flightpathJson = flightpathFC.toJson();
-
-        // write the geojson file
-        try {
-            FileWriter myWriter = new FileWriter(
-                    "drone-" + year + "-" + month + "-" + day + ".geojson");
-            myWriter.write(flightpathJson);
-            myWriter.close();
-            System.out.println("Drone Geojson created");
-        } catch (IOException e) {
-            System.err.println("Fatal error: Unable to generate Drone Geojson");
-            e.printStackTrace();
-        }
-    }
-
 
 //    public static void main(String[] args) throws MalformedURLException, JSONException, ParseException {
 //        if (isDateValid(args[0]) && isValidURL(args[1])) {
@@ -160,7 +108,7 @@ public class App
     public static void main(String[] args) throws MalformedURLException, JSONException, ParseException {
         Instant start = Instant.now();
 
-        String arg0 = "2023-05-30";
+        String arg0 = "2023-03-01";
         String arg1 = "https://ilp-rest.azurewebsites.net";
         String arg2 = "cabbage";
 
@@ -180,36 +128,38 @@ public class App
             Drone drone = new Drone(map, map.getStartPos());
             Restaurant[] restaurants = Restaurant.getRestaurantsFromRestServer(new URL(baseAddress));
 
-            List<Order> orders = Drone.initializeOrders(restaurants, year, month, day);
+            drone.initializeOrders(restaurants, year, month, day);
 
             // move the drone to deliver all orders
-            for (int i = 0; i < orders.size(); i++){
-                Order currentOrder = map.popClosestOrder();
+            for (int i = 0; i < drone.getAllOrders().size(); i++){
+                Order currOrder = drone.getAllOrders().get(i);
 
-                if (drone.getRemainBattery() <= 0 ){
-                    System.out.println("DRONE: out of battery");
-                    break;
-                }
-                if (drone.returned){
-                    break;
-                }
+                if (currOrder.getOrderOutcome().equals(ValidButNotDelivered.toString())) {
 
-                if (currentOrder.getOrderOutcome().equals(Order.OrderOutcome.ValidButNotDelivered.toString())) {
-                    System.out.printf("DRONE: Currently delivering order {orderNo: %s} %n", currentOrder.getOrderNo());
-                    drone.moveDrone(currentOrder);
+                    double shortest_dist = drone.getStartPos().distanceTo(currOrder.getRestaurantLoc()) *2 / LngLat.LENGTH_OF_MOVE;
+
+                    if (shortest_dist > drone.getRemainBattery()){
+                        System.out.println("DRONE: No enough battery to deliver the rest orders");
+                        break;
+                    }
+
+                    drone.droneMove(currOrder);
+                } else {
+                    System.out.printf("DRONE: Invalid Order {orderNo: %s} %n", currOrder.getOrderNo());
+                    System.out.println("-----> " + currOrder.getOrderOutcome() + "\n");
                 }
             }
-            System.out.println("Remaining battery after delivery: " + drone.getRemainBattery());
+            System.out.println("<-------------Result------------->");
+            drone.getOrdersStatistics();
 
-            List<Order> delivered = drone.getOrderDelivered();
             List<Flightpath> flightpath = drone.getFlightpaths();
 
             DataReadWrite dataReadWrite = new DataReadWrite();
 
             // log the files
-            createGeojsonFile(flightpath, year, month, day);
+            dataReadWrite.writeDroneGeojson(flightpath, year, month, day);
             dataReadWrite.writeFlightpathJson(flightpath, year, month, day);
-            dataReadWrite.writeDeliveriesJson(delivered, year, month, day);
+            dataReadWrite.writeDeliveriesJson(drone.getAllOrders(), year, month, day);
 
 
         } else {

@@ -3,7 +3,9 @@ package uk.ac.ed.inf;
 import com.mapbox.geojson.Point;
 import com.mapbox.geojson.Polygon;
 import com.mapbox.geojson.Feature;
+import org.json.JSONArray;
 import org.json.JSONException;
+import org.json.JSONObject;
 
 import java.net.MalformedURLException;
 import java.net.URL;
@@ -47,14 +49,14 @@ public class Map {
      * @param day day from input
      */
     public Map(DataReadWrite dataReadWrite, String year, String month, String day) {
-        this.noFlyZones = new ArrayList<Polygon>();
-        this.restaurantLocs = new ArrayList<LngLat>();
+        this.noFlyZones = new ArrayList<>();
+        this.restaurantLocs = new ArrayList<>();
         this.dataReadWrite = dataReadWrite;
         this.year = year;
         this.month = month;
         this.day = day;
         this.startPos = new LngLat(APPLETON_LONGITUDE, APPLETON_LATITUDE);
-        this.orders = new ArrayList<Order>();
+        this.orders = new ArrayList<>();
 
         initializeMap();
     }
@@ -78,46 +80,5 @@ public class Map {
             LngLat loc = new LngLat(p.longitude(), p.latitude());
             this.restaurantLocs.add(loc);
         }
-
-        // read and setup orders
-
-
-        try {
-            String baseAddress = "https://ilp-rest.azurewebsites.net/";
-            Restaurant[] restaurants = Restaurant.getRestaurantsFromRestServer(new URL(baseAddress));
-
-            this.orders = Drone.initializeOrders(restaurants, this.year, this.month, this.day);
-        } catch (JSONException e) {
-            throw new RuntimeException(e);
-        } catch (ParseException e) {
-            throw new RuntimeException(e);
-        } catch (MalformedURLException e) {
-            throw new RuntimeException(e);
-        }
-
     }
-
-    /**
-     * Pop the closest order from a copy list of today's order
-     * @return the closest order from Appleton Tower
-     */
-    public Order popClosestOrder(){
-        if (this.orders.size() == 0){
-            return null;
-        }
-
-        Order closestOrder = this.orders.get(0);
-        double minDist = Double.POSITIVE_INFINITY;
-        for (Order order : this.orders){
-            if (order.getDistance() < minDist){
-                minDist = order.getDistance();
-                closestOrder = order;
-            }
-        }
-        // pop it from the list
-        this.orders.remove(closestOrder);
-        return closestOrder;
-
-    }
-
 }

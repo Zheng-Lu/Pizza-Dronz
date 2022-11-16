@@ -269,7 +269,7 @@ public class LngLat {
 
     /**
      * Calculate the next valid move to given position,
-     * outside no-fly-zone and inside drone confinment area,
+     * outside no-fly-zone
      * if next move not valid, modify angle in +10,-10, +20,-20
      *
      * @param map the map to traverse
@@ -304,11 +304,6 @@ public class LngLat {
         }
         return nextPos;
     }
-
-
-
-
-
 }
 
 

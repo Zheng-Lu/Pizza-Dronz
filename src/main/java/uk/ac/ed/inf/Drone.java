@@ -6,6 +6,7 @@ import org.json.JSONObject;
 
 import java.text.ParseException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 public class Drone {
@@ -13,18 +14,22 @@ public class Drone {
     public static final double APPLETON_LONGITUDE = -3.186874;
     public static final double APPLETON_LATITUDE = 55.944494;
     public static final LngLat APPLETON_TOWER = new LngLat(APPLETON_LONGITUDE, APPLETON_LATITUDE);
-    public boolean returned;
+    public boolean prepareToReturn;
     private final LngLat startPos;
     private LngLat dronePos;
+    private LngLat currGoal;
     private int remainBattery;
-    private int numPizzaCarried;
     private List<Flightpath> flightpaths;
     private final Map map;
     private List<Order> orderDelivered;
+    private List<Order> allOrders;
 
     /** getters  */
     public List<Order> getOrderDelivered(){
         return this.orderDelivered;
+    }
+    public List<Order> getAllOrders(){
+        return this.allOrders;
     }
 
     public List<Flightpath> getFlightpaths(){
@@ -34,6 +39,8 @@ public class Drone {
     public int getRemainBattery(){
         return this.remainBattery;
     }
+    public LngLat getCurrGoal() { return this.currGoal; }
+    public LngLat getStartPos() { return this.startPos; }
 
 
 
@@ -45,16 +52,17 @@ public class Drone {
         this.map = map;
         this.startPos = startPos;
         this.dronePos = new LngLat (startPos.lng, startPos.lat);
+        this.currGoal = null;
         this.remainBattery = BATTERY;
-        this.returned = false;
-        this.flightpaths = new ArrayList<Flightpath>();
-        this.orderDelivered = new ArrayList<Order>();
+        this.prepareToReturn = false;
+        this.flightpaths = new ArrayList<>();
+        this.orderDelivered = new ArrayList<>();
+        this.allOrders = new ArrayList<>();
     }
 
-    public static List<Order> initializeOrders(Restaurant[] restaurants, String year, String month, String day) throws JSONException, ParseException {
+    public void initializeOrders(Restaurant[] restaurants, String year, String month, String day) throws JSONException, ParseException {
         DataReadWrite dataReadWrite = new DataReadWrite();
         List<JSONObject> rawOrders = dataReadWrite.readOrders(year,month,day);
-        List<Order> orders = new ArrayList<>();
 
         for (JSONObject rawOrder: rawOrders) {
             JSONArray numItems = (JSONArray) rawOrder.get("orderItems");
@@ -77,126 +85,108 @@ public class Drone {
             String orderOutcome = Order.getOrderOutcome(restaurants, orderItems, creditCardNumber, creditCardExpiry,
                     cvv, orderDate, priceTotalInPence);
 
-            orders.add(new Order(orderNo, orderDate, restaurantLoc, creditCardNumber, creditCardExpiry,
+            this.allOrders.add(new Order(orderNo, orderDate, restaurantLoc, creditCardNumber, creditCardExpiry,
                     cvv, orderItems, priceTotalInPence, orderOutcome));
         }
 
-        return orders;
+        // Sort orders according to distance from Appleton Tower in ascending way
+        this.allOrders.sort(((o1, o2) -> Double.compare(o2.getDistance(), o1.getDistance())));
+        Collections.reverse(this.allOrders);
     }
 
-    /**
-     * Calculate the path and move the drone to deliver the current order
-     */
-    public void moveDrone(Order order){
-        ArrayList<LngLat> routeOfOrder = planRoute(order);
-        double heuristic = 0.0;
-        boolean prepareToReturn = false;
+    public void getOrdersStatistics() {
+        int validNumOrders = 0;
 
-        // calculate heuristic distance: straight line distance connecting the route
-        for (int i = 0; i < routeOfOrder.size() - 1; i++){
-            heuristic += routeOfOrder.get(i).distanceTo(routeOfOrder.get(i+1));
+        for (Order order : this.allOrders){
+            if (order.getOrderOutcome().equals(Order.OrderOutcome.ValidButNotDelivered.toString()) ||
+                    order.getOrderOutcome().equals(Order.OrderOutcome.Delivered.toString())){
+                validNumOrders += 1;
+            }
         }
+        System.out.println("Number of invalid orders: " + (getAllOrders().size() - validNumOrders));
+        System.out.println("Orders delivered: " + getOrderDelivered().size() + "/" + validNumOrders);
+        System.out.println("Remaining battery after delivery: " + getRemainBattery());
+    }
 
-        // return to starting position if the drone does not have enough battery left to deliver the order
-        // according to heuristic
-        if (heuristic / LngLat.LENGTH_OF_MOVE > this.remainBattery){
-            routeOfOrder.clear();
-            addLocToRoute(this.dronePos, this.startPos, routeOfOrder);
-            prepareToReturn = true;
-            System.out.println("DRONE: not enough battery, give up current order and return");
 
-            // set the drone to return if the order is the final order today
-        } else if (this.orderDelivered.size() + 1 == this.map.getOrderLength()){
-            addLocToRoute(routeOfOrder.get(routeOfOrder.size() - 1), this.startPos, routeOfOrder);
-            prepareToReturn = true;
-        }
+    public void droneMove(Order order){
+        System.out.printf("DRONE: Currently delivering order {orderNo: %s} %n", order.getOrderNo());
+        int lastTimeRemainBattery = this.remainBattery;
+
+        this.currGoal = order.getRestaurantLoc();
+
+        List<Flightpath> backtrack_path = new ArrayList<>();
 
         // move the drone
-        moveSteps(order, routeOfOrder, prepareToReturn);
-    }
-
-
-    /**
-     * Helper function to actually move the drone
-     * @param order current order
-     * @param routeOfOrder the planned route to deliver the current order
-     * @param prepareToReturn if the drone have finished today's order and ready to return
-     */
-    private void moveSteps(Order order, ArrayList<LngLat> routeOfOrder, boolean prepareToReturn){
         while (this.remainBattery > 0){
-            // move a step and record it
-            LngLat newPos = this.dronePos.move(this.map, routeOfOrder.get(0));
+            if (!this.prepareToReturn){
+                // move a step and record it
+                LngLat newPos = this.dronePos.move(this.map, this.currGoal);
 
-            Flightpath thisMove = new Flightpath(order.getOrderNo(), this.dronePos.getLng(),
-                    this.dronePos.getLat(), this.dronePos.getAngle(), newPos.getLng(), newPos.getLat());
+                Flightpath thisMove = new Flightpath(order.getOrderNo(), this.dronePos.getLng(),
+                        this.dronePos.getLat(), this.dronePos.getAngle(), newPos.getLng(), newPos.getLat());
 
-            this.flightpaths.add(thisMove);
+                this.flightpaths.add(thisMove);
+                backtrack_path.add(thisMove);
 
-            this.dronePos.setLngLat(newPos);
-            this.remainBattery -= 1;
-
-            // hover if the drone is close to its target, while recording this step
-            if (this.dronePos.closeTo(routeOfOrder.get(0))) {
-                this.dronePos = this.dronePos.nextPosition(LngLat.Direction.Null);
-
-                Flightpath hoverMove = new Flightpath(order.getOrderNo(), this.dronePos.getLng(), this.dronePos.getLat(),
-                        -999, this.dronePos.getLng(), this.dronePos.getLat());
-                this.flightpaths.add(hoverMove);
-
+                this.dronePos.setLngLat(newPos);
                 this.remainBattery -= 1;
-                routeOfOrder.remove(0);
 
-                // delivered the last order of the day
-                if ((!routeOfOrder.isEmpty()) && routeOfOrder.get(0).equals(this.startPos)){
-                    orderDelivered.add(order);
-                    System.out.println("DRONE: the last order delivered, begin to return");
+                // hover if the drone is close to its target, while recording this step
+                if (this.dronePos.closeTo(this.currGoal)) {
+                    this.dronePos = this.dronePos.nextPosition(LngLat.Direction.Null);
+
+                    Flightpath hoverMove = new Flightpath(order.getOrderNo(), this.dronePos.getLng(), this.dronePos.getLat(),
+                            -999, this.dronePos.getLng(), this.dronePos.getLat());
+                    this.flightpaths.add(hoverMove);
+
+                    this.remainBattery -= 1;
+
+                    this.prepareToReturn = true;
+                    this.currGoal = this.startPos;
+
                 }
-            }
-            // delivered the current order
-            if (routeOfOrder.isEmpty() && !prepareToReturn) {
-                orderDelivered.add(order);
-                order.markDelivered();
-                System.out.printf("DRONE: current order {orderNo: %s} delivered %n",
-                        order.getOrderNo());
+            } else {
+                Collections.reverse(backtrack_path);
+
+                for (Flightpath thisMove : backtrack_path) {
+
+//                    LngLat newPos = this.dronePos.move(this.map, this.currGoal);
+                    this.flightpaths.add(thisMove);
+
+                    this.dronePos.setLngLat(new LngLat(thisMove.fromLongitude, thisMove.fromLatitude));
+
+                    this.remainBattery -= 1;
+                }
+
+                // hover if the drone is close to its target, while recording this step
+                if (this.dronePos.closeTo(this.currGoal)) {
+
+                    orderDelivered.add(order);
+                    order.markDelivered();
+                    System.out.printf("-----> Order {orderNo: %s} delivered %n", order.getOrderNo());
+
+                    this.dronePos = this.dronePos.nextPosition(LngLat.Direction.Null);
+
+                    Flightpath hoverMove = new Flightpath(order.getOrderNo(), this.dronePos.getLng(), this.dronePos.getLat(),
+                            -999, this.dronePos.getLng(), this.dronePos.getLat());
+                    this.flightpaths.add(hoverMove);
+
+                    this.remainBattery -= 1;
+                    this.prepareToReturn = false;
+                }
+
+                System.out.println("-----> Took " + (lastTimeRemainBattery - this.remainBattery) + " Moves \n");
+
                 break;
-                // the drone returned to starting position
-            } else if (routeOfOrder.isEmpty() && this.dronePos.closeTo(this.startPos)){
-                this.returned = true;
-                System.out.println("DRONE: returned to starting position");
-                break;
+
             }
         }
-
     }
 
 
-    /**
-     * Plan the route of the drone for current order,
-     * connecting shops and customer and avoiding restricted area
-     * @param order the current order
-     * @return the route
-     */
-    private ArrayList<LngLat> planRoute(Order order){
-        ArrayList<LngLat> route = new ArrayList<LngLat>();
 
-        addLocToRoute(this.dronePos, order.getRestaurantLoc(), route);
-        addLocToRoute(order.getRestaurantLoc(), APPLETON_TOWER, route);
-
-        return route;
-    }
-
-    /**
-     * Helper function to plan the route of the drone for current order,
-     * add a desired position for the drone
-     * @param prePos previous position for the drone to visit
-     * @param nextPos desired position for the drone
-     * @param route the route of the drone
-     */
-    private void addLocToRoute(LngLat prePos, LngLat nextPos, ArrayList<LngLat> route ){
-        route.add(nextPos);
-    }
-
-
+    // TODO: Implement bug2 algorithm
     private void Bug2Algorithm(LngLat goalPos){
 
 
