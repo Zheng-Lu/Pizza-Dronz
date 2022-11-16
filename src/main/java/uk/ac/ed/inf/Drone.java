@@ -9,6 +9,9 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
+import java.time.Clock;
+import java.time.Duration;
+
 public class Drone {
     public static final int BATTERY = 2000;
     public static final double APPLETON_LONGITUDE = -3.186874;
@@ -151,7 +154,6 @@ public class Drone {
 
                 for (Flightpath thisMove : backtrack_path) {
 
-//                    LngLat newPos = this.dronePos.move(this.map, this.currGoal);
                     this.flightpaths.add(thisMove);
 
                     this.dronePos.setLngLat(new LngLat(thisMove.fromLongitude, thisMove.fromLatitude));
@@ -177,6 +179,8 @@ public class Drone {
                 }
 
                 System.out.println("-----> Took " + (lastTimeRemainBattery - this.remainBattery) + " Moves \n");
+
+
 
                 break;
 

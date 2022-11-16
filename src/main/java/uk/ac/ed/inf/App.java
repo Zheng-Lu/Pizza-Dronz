@@ -5,6 +5,7 @@ import java.net.URL;
 import java.text.DateFormat;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
+import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
@@ -144,6 +145,7 @@ public class App
                     }
 
                     drone.droneMove(currOrder);
+
                 } else {
                     System.out.printf("DRONE: Invalid Order {orderNo: %s} %n", currOrder.getOrderNo());
                     System.out.println("-----> " + currOrder.getOrderOutcome() + "\n");
