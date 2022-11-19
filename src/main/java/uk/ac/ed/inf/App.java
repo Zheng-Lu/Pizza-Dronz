@@ -19,10 +19,6 @@ import org.json.JSONException;
 import static uk.ac.ed.inf.Order.OrderOutcome.ValidButNotDelivered;
 
 
-/**
- * Hello world!
- *
- */
 public class App
 {
     public static boolean isDateValid(String date)
@@ -191,7 +187,7 @@ public class App
 
 
     public static void main(String[] args) throws MalformedURLException, JSONException, ParseException {
-        System.out.println(Integer.parseInt(" 96147674042092"));
+//        System.out.println(Integer.parseInt(" 96147674042092"));
 
         Instant start = Instant.now();
 
@@ -256,7 +252,6 @@ public class App
                 throw new IllegalArgumentException("Invalid URL input");
             }
         }
-
 
         Instant end = Instant.now();
         System.out.println(Duration.between(start, end) + "\n");

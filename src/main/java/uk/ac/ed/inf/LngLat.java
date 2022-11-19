@@ -283,11 +283,9 @@ public class LngLat {
         double adjustment = 22.5;
 
         // if the move is not valid, increase the angle until it is valid
-        // modify angle in +22.5,-22.5, +22.5,-22.5
         while ( !(isOutsideNoFlyZone(mapInitialization, nextPos))){
             this.angle += adjustment;
-            // go back to previous location is forbidden,
-            // since it might cause the drone trap in a point
+            // go back to previous location is forbidden, since it might cause the drone trap in a point
             if (Math.abs(preAngle - this.angle) == 180){
                 this.angle += 22.5*(adjustment/Math.abs(adjustment));
             }

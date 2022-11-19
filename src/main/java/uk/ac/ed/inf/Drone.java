@@ -62,7 +62,6 @@ public class Drone {
         this.orderDelivered = new ArrayList<>();
         this.allOrders = new ArrayList<>();
         this.ticksSinceStartOfCalculation = 0;
-
     }
 
     public void initializeOrders(Restaurant[] restaurants, String year, String month, String day) throws JSONException, ParseException {

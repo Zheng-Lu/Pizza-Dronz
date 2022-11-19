@@ -1,8 +1,5 @@
 package uk.ac.ed.inf;
 
-import org.json.JSONException;
-
-import java.net.MalformedURLException;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.*;
@@ -257,48 +254,4 @@ public class Order {
 
         return String.valueOf(OrderOutcome.ValidButNotDelivered);
     }
-
-
-//    public static List<Order> initializeOrders(Restaurant[] restaurants, String year, String month, String day) throws JSONException, ParseException {
-//        DataReadWrite dataReadWrite = new DataReadWrite();
-//        List<JSONObject> rawOrders = dataReadWrite.readOrders(year,month,day);
-//        List<Order> orders = new ArrayList<>();
-//
-//        for (JSONObject rawOrder: rawOrders) {
-//            JSONArray numItems = (JSONArray) rawOrder.get("orderItems");
-//            String[] orderItems = new String[numItems.length()];
-//
-//            for (int i = 0; i < numItems.length(); i++) {
-//                orderItems[i] = numItems.get(i).toString();
-//            }
-//
-//            Restaurant restaurant = Restaurant.getRestaurantFromItem(restaurants, orderItems[0]);
-//            LngLat restaurantLoc = new LngLat(restaurant.getLongitude(), restaurant.getLatitude());
-//
-//            String orderNo = rawOrder.get("orderNo").toString();
-//            String orderDate = rawOrder.get("orderDate").toString();
-//            String creditCardNumber = rawOrder.get("creditCardNumber").toString();
-//            String creditCardExpiry = rawOrder.get("creditCardExpiry").toString();
-//            String cvv = rawOrder.get("cvv").toString();
-//            int priceTotalInPence = (int) rawOrder.get("priceTotalInPence");
-//
-//            String orderOutcome = getOrderOutcome(restaurants, orderItems, creditCardNumber, creditCardExpiry,
-//                    cvv, orderDate, priceTotalInPence);
-//
-//            orders.add(new Order(orderNo, orderDate, restaurantLoc, creditCardNumber, creditCardExpiry,
-//                    cvv, orderItems, priceTotalInPence, orderOutcome));
-//        }
-//
-//        return orders;
-//    }
-
-    public static void main(String[] args) throws JSONException, ParseException, MalformedURLException {
-        String expiryDate = "13/02";
-        SimpleDateFormat cardExpiryFormat = new SimpleDateFormat("MM/yy");
-        cardExpiryFormat.setLenient(false);
-        Date expiry = cardExpiryFormat.parse(expiryDate);
-        System.out.println(expiry);
-
-    }
-
 }
