@@ -3,17 +3,11 @@ package uk.ac.ed.inf;
 import com.mapbox.geojson.Point;
 import com.mapbox.geojson.Polygon;
 import com.mapbox.geojson.Feature;
-import org.json.JSONArray;
-import org.json.JSONException;
-import org.json.JSONObject;
 
-import java.net.MalformedURLException;
-import java.net.URL;
-import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.List;
 
-public class Map {
+public class MapInitialization {
 
     /** constants */
     public static final double APPLETON_LONGITUDE = -3.186874;
@@ -48,7 +42,7 @@ public class Map {
      * @param month month from input
      * @param day day from input
      */
-    public Map(DataReadWrite dataReadWrite, String year, String month, String day) {
+    public MapInitialization(DataReadWrite dataReadWrite, String year, String month, String day) {
         this.noFlyZones = new ArrayList<>();
         this.restaurantLocs = new ArrayList<>();
         this.dataReadWrite = dataReadWrite;

@@ -1,8 +1,6 @@
 package uk.ac.ed.inf;
 
-import org.json.JSONArray;
 import org.json.JSONException;
-import org.json.JSONObject;
 
 import java.net.MalformedURLException;
 import java.text.ParseException;
@@ -75,7 +73,7 @@ public class Order {
     }
 
     public double getDistance(){
-        return this.restaurantLoc.distanceTo(Map.APPLETON_TOWER);
+        return this.restaurantLoc.distanceTo(MapInitialization.APPLETON_TOWER);
     }
 
     public void markDelivered() {this.orderOutcome = OrderOutcome.Delivered.toString();}
@@ -93,7 +91,6 @@ public class Order {
         InvalidPizzaCombinationMultipleSuppliers,
         Invalid
     }
-
     /**
      * check if given card number is valid
      * @param cardNumber restaurants that participate in pizza delivery
@@ -103,8 +100,10 @@ public class Order {
     public static boolean isValidCardNumber(String cardNumber){
         int sum = 0;
         boolean alternate = false;
+        System.out.println(cardNumber);
         for (int i = cardNumber.length() - 1; i >= 0; i--)
         {
+            // TODO: Include the case of card number contains spaces
             int n = Integer.parseInt(cardNumber.substring(i, i + 1));
             if (alternate)
             {

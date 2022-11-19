@@ -5,10 +5,14 @@ import java.net.URL;
 import java.text.DateFormat;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
-import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.LocalDate;
+import java.time.temporal.ChronoUnit;
+import java.util.Calendar;
+import java.util.Date;
 import java.util.List;
+import java.util.stream.Stream;
 
 import org.json.JSONException;
 
@@ -106,18 +110,100 @@ public class App
 //    }
 
 
+//    public static void main(String[] args) throws MalformedURLException, JSONException, ParseException {
+//        Instant start = Instant.now();
+//
+//        LocalDate startDate = LocalDate.parse("2023-01-01");
+//        LocalDate endDate   = LocalDate.parse("2023-06-01");
+//        for (LocalDate date = startDate; date.isBefore(endDate); date = date.plusDays(1)) {
+//
+//            Instant startTiming = Instant.now();
+//
+//            String arg0 = String.valueOf(date);
+//            String arg1 = "https://ilp-rest.azurewebsites.net";
+//            String arg2 = "cabbage";
+//
+//            if (isDateValid(arg0) && isValidURL(arg1)) {
+//                String[] inputDate = arg0.split("-");
+//                String year = inputDate[0];
+//                String month = inputDate[1];
+//                String day = inputDate[2];
+//
+//                String baseAddress = arg1;
+//
+//                String seed = arg2;
+//
+//                // Initialize map, drone and restaurants
+//                DataReadWrite readData = new DataReadWrite();
+//                MapInitialization mapInitialization = new MapInitialization(readData, year, month, day);
+//                Drone drone = new Drone(mapInitialization, mapInitialization.getStartPos());
+//                Restaurant[] restaurants = Restaurant.getRestaurantsFromRestServer(new URL(baseAddress));
+//
+//                drone.initializeOrders(restaurants, year, month, day);
+//
+//                // move the drone to deliver all orders
+//                for (int i = 0; i < drone.getAllOrders().size(); i++){
+//                    Order currOrder = drone.getAllOrders().get(i);
+//
+//                    if (currOrder.getOrderOutcome().equals(ValidButNotDelivered.toString())) {
+//
+//                        double shortest_dist = drone.getStartPos().distanceTo(currOrder.getRestaurantLoc()) *2 / LngLat.LENGTH_OF_MOVE;
+//
+//                        if (shortest_dist > drone.getRemainBattery()){
+//                            System.out.println("DRONE: No enough battery to deliver the rest orders");
+//                            break;
+//                        }
+//
+//                        drone.droneMove(currOrder);
+//
+//                    } else {
+//                        System.out.printf("DRONE: Invalid Order {orderNo: %s} %n", currOrder.getOrderNo());
+//                        System.out.println("-----> " + currOrder.getOrderOutcome() + "\n");
+//                    }
+//                }
+//                System.out.println("<-------------Result------------->");
+//                drone.getOrdersStatistics();
+//
+//                List<Flightpath> flightpath = drone.getFlightpaths();
+//
+//                DataReadWrite dataReadWrite = new DataReadWrite();
+//
+//                // log the files
+//                dataReadWrite.writeDroneGeojson(flightpath, year, month, day);
+//                dataReadWrite.writeFlightpathJson(flightpath, year, month, day);
+//                dataReadWrite.writeDeliveriesJson(drone.getAllOrders(), year, month, day);
+//
+//            } else {
+//                if (!isDateValid(args[0])){
+//                    throw new IllegalArgumentException("Invalid date input");
+//                } else if (!isValidURL(args[1])) {
+//                    throw new IllegalArgumentException("Invalid URL input");
+//                }
+//            }
+//
+//            Instant endTiming = Instant.now();
+//            System.out.println(Duration.between(startTiming, endTiming));
+//        }
+//
+//        Instant end = Instant.now();
+//        System.out.println(Duration.between(start, end) + "\n");
+//    }
+
+
     public static void main(String[] args) throws MalformedURLException, JSONException, ParseException {
+        System.out.println(Integer.parseInt(" 96147674042092"));
+
         Instant start = Instant.now();
 
-        String arg0 = "2023-03-01";
+        String arg0 = "2023-01-22";
         String arg1 = "https://ilp-rest.azurewebsites.net";
         String arg2 = "cabbage";
 
         if (isDateValid(arg0) && isValidURL(arg1)) {
-            String[] date = arg0.split("-");
-            String year = date[0];
-            String month = date[1];
-            String day = date[2];
+            String[] inputDate = arg0.split("-");
+            String year = inputDate[0];
+            String month = inputDate[1];
+            String day = inputDate[2];
 
             String baseAddress = arg1;
 
@@ -125,8 +211,8 @@ public class App
 
             // Initialize map, drone and restaurants
             DataReadWrite readData = new DataReadWrite();
-            Map map = new Map(readData, year, month, day);
-            Drone drone = new Drone(map, map.getStartPos());
+            MapInitialization mapInitialization = new MapInitialization(readData, year, month, day);
+            Drone drone = new Drone(mapInitialization, mapInitialization.getStartPos());
             Restaurant[] restaurants = Restaurant.getRestaurantsFromRestServer(new URL(baseAddress));
 
             drone.initializeOrders(restaurants, year, month, day);
@@ -163,7 +249,6 @@ public class App
             dataReadWrite.writeFlightpathJson(flightpath, year, month, day);
             dataReadWrite.writeDeliveriesJson(drone.getAllOrders(), year, month, day);
 
-
         } else {
             if (!isDateValid(args[0])){
                 throw new IllegalArgumentException("Invalid date input");
@@ -172,7 +257,8 @@ public class App
             }
         }
 
+
         Instant end = Instant.now();
-        System.out.println(Duration.between(start, end));
+        System.out.println(Duration.between(start, end) + "\n");
     }
 }

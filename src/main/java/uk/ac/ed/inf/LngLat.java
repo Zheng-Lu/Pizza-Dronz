@@ -239,14 +239,14 @@ public class LngLat {
     /**
      * Test if going to the next position from current position is outside No-Fly-Zone
      *
-     * @param map the map of the drone navigating
+     * @param mapInitialization the map of the drone navigating
      * @param nextPos the position to be tested
      * @return outside No-Fly-Zone or not
      */
-    public boolean isOutsideNoFlyZone(Map map, LngLat nextPos){
+    public boolean isOutsideNoFlyZone(MapInitialization mapInitialization, LngLat nextPos){
         Line2D path = new Line2D.Double(this.lat, this.lng,
                 nextPos.getLat(), nextPos.getLng());
-        List<Polygon> noFlyZones = map.getNoFlyZones();
+        List<Polygon> noFlyZones = mapInitialization.getNoFlyZones();
 
         // for every line segment of every zone,
         // test if it intersects with the line segment of the current move
@@ -272,11 +272,11 @@ public class LngLat {
      * outside no-fly-zone
      * if next move not valid, modify angle in +10,-10, +20,-20
      *
-     * @param map the map to traverse
+     * @param mapInitialization the map to traverse
      * @param destPos desired position of the drone
      * @return the next valid move
      */
-    public LngLat move(Map map, LngLat destPos){
+    public LngLat move(MapInitialization mapInitialization, LngLat destPos){
         double preAngle = this.angle;
         this.angle = calculateAngle(destPos);
         LngLat nextPos = nextPosition(getDirectionByAngle(this.angle));
@@ -284,7 +284,7 @@ public class LngLat {
 
         // if the move is not valid, increase the angle until it is valid
         // modify angle in +22.5,-22.5, +22.5,-22.5
-        while ( !(isOutsideNoFlyZone(map, nextPos))){
+        while ( !(isOutsideNoFlyZone(mapInitialization, nextPos))){
             this.angle += adjustment;
             // go back to previous location is forbidden,
             // since it might cause the drone trap in a point

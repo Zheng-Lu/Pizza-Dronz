@@ -19,13 +19,13 @@ public class Flightpath {
      * @param toLatitude next latitude coordinate of the drone
      */
     public Flightpath(String orderNo, double fromLongitude, double fromLatitude,
-                      double angle, double toLongitude, double toLatitude){
+                      double angle, double toLongitude, double toLatitude, int ticksSinceStartOfCalculation){
         this.orderNo = orderNo;
         this.fromLongitude = fromLongitude;
         this.fromLatitude = fromLatitude;
         this.angle = angle;
         this.toLongitude = toLongitude;
         this.toLatitude = toLatitude;
-        this.ticksSinceStartOfCalculation =  0;
+        this.ticksSinceStartOfCalculation =  ticksSinceStartOfCalculation;
     }
 }

@@ -1,4 +1,5 @@
 package uk.ac.ed.inf;
+import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -13,6 +14,9 @@ import com.mapbox.geojson.*;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
+
+import com.google.gson.JsonArray;
+import com.google.gson.JsonObject;
 
 public class DataReadWrite {
     private static final HttpClient client = HttpClient.newHttpClient();
@@ -96,34 +100,30 @@ public class DataReadWrite {
     }
 
 
-    // TODO: add ticksSinceStartOfCalculation into file
     /**
      * Write the flightpath json file containing all flight steps made by the drone in a given day
      * @param flightpaths the flightpath of the drone in a given day
      */
     public void writeFlightpathJson(List<Flightpath> flightpaths, String year,
                                     String month, String day) {
-        String fileName = "flightpath-" + year + "-" + month + "-" + day + ".json";
+        String fileName = "resultfiles" + File.separator + "flightpath-" + year + "-" + month + "-" + day + ".json";
 
         //Creating a JSONArray object
-        JSONArray jsonArray = new JSONArray();
+        JsonArray jsonArray = new JsonArray();
 
         //Creating a JSONObject object
-        try {
-            for (Flightpath path : flightpaths) {
-                JSONObject jsonObject = new JSONObject();
-                jsonObject.put("orderNo", path.orderNo);
-                jsonObject.put("fromLongitude", path.fromLongitude);
-                jsonObject.put("fromLatitude", path.fromLatitude);
-                jsonObject.put("angle", path.angle);
-                jsonObject.put("toLongitude", path.toLongitude);
-                jsonObject.put("toLatitude", path.toLatitude);
-                jsonArray.put(jsonObject);
-            }
-
-        } catch (JSONException e) {
-            throw new RuntimeException(e);
+        for (Flightpath path : flightpaths) {
+            JsonObject jsonObject = new JsonObject();
+            jsonObject.addProperty("orderNo", path.orderNo);
+            jsonObject.addProperty("fromLongitude", path.fromLongitude);
+            jsonObject.addProperty("fromLatitude", path.fromLatitude);
+            jsonObject.addProperty("angle", path.angle);
+            jsonObject.addProperty("toLongitude", path.toLongitude);
+            jsonObject.addProperty("toLatitude", path.toLatitude);
+            jsonObject.addProperty("ticksSinceStartOfCalculation", path.ticksSinceStartOfCalculation);
+            jsonArray.add(jsonObject);
         }
+
         try {
             FileWriter file = new FileWriter(fileName);
             file.write(jsonArray.toString());
@@ -142,24 +142,20 @@ public class DataReadWrite {
      */
     public void writeDeliveriesJson(List<Order> orders, String year,
                                     String month, String day) {
-        String fileName = "deliveries-" + year + "-" + month + "-" + day + ".json";
+        String fileName = "resultfiles" + File.separator + "deliveries-" + year + "-" + month + "-" + day + ".json";
 
         //Creating a JSONArray object
-        JSONArray jsonArray = new JSONArray();
+        JsonArray jsonArray = new JsonArray();
 
         //Creating a JSONObject object
-        try {
-            for (Order order : orders) {
-                JSONObject jsonObject = new JSONObject();
-                jsonObject.put("orderNo", order.getOrderNo());
-                jsonObject.put("outcome", order.getOrderOutcome());
-                jsonObject.put("costInPence", order.getPriceTotalInPence());
-                jsonArray.put(jsonObject);
-            }
-
-        } catch (JSONException e) {
-            throw new RuntimeException(e);
+        for (Order order : orders) {
+            JsonObject jsonObject = new JsonObject();
+            jsonObject.addProperty("orderNo", order.getOrderNo());
+            jsonObject.addProperty("outcome", order.getOrderOutcome());
+            jsonObject.addProperty("costInPence", order.getPriceTotalInPence());
+            jsonArray.add(jsonObject);
         }
+
         try {
             FileWriter file = new FileWriter(fileName);
             file.write(jsonArray.toString());
@@ -181,7 +177,8 @@ public class DataReadWrite {
      */
     public void writeDroneGeojson(List<Flightpath> allFlightpath, String year,
                                   String month, String day) {
-        String fileName = "drone-" + year + "-" + month + "-" + day + ".geojson";
+
+        String fileName = "resultfiles" + File.separator + "drone-" + year + "-" + month + "-" + day + ".geojson";
 
         // convert flightpath objects to linestring
         List<Point> flightpathPoints = new ArrayList<>();
