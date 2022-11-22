@@ -70,7 +70,7 @@ public class Order {
     }
 
     public double getDistance(){
-        return this.restaurantLoc.distanceTo(MapInitialization.APPLETON_TOWER);
+        return this.restaurantLoc.distanceTo(Drone.APPLETON_TOWER);
     }
 
     public void markDelivered() {this.orderOutcome = OrderOutcome.Delivered.toString();}
@@ -97,21 +97,26 @@ public class Order {
     public static boolean isValidCardNumber(String cardNumber){
         int sum = 0;
         boolean alternate = false;
-        System.out.println(cardNumber);
         for (int i = cardNumber.length() - 1; i >= 0; i--)
         {
-            // TODO: Include the case of card number contains spaces
-            int n = Integer.parseInt(cardNumber.substring(i, i + 1));
-            if (alternate)
-            {
-                n *= 2;
-                if (n > 9)
+            try {
+                int n = Integer.parseInt(cardNumber.substring(i, i + 1));
+                if (alternate)
                 {
-                    n = (n % 10) + 1;
+                    n *= 2;
+                    if (n > 9)
+                    {
+                        n = (n % 10) + 1;
+                    }
                 }
+                sum += n;
+                alternate = !alternate;
+            } catch (NumberFormatException e) {
+                // Invalid if given card number does not have the appropriate format
+                // such as including extra spaces, or special characters
+                return false;
             }
-            sum += n;
-            alternate = !alternate;
+
         }
         return (sum % 10 == 0) && (cardNumber.length() == 16);
     }

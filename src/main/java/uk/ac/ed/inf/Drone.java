@@ -1,7 +1,6 @@
 package uk.ac.ed.inf;
 
 import org.json.JSONArray;
-import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.text.ParseException;
@@ -16,6 +15,7 @@ public class Drone {
     public static final double APPLETON_LONGITUDE = -3.186874;
     public static final double APPLETON_LATITUDE = 55.944494;
     public static final LngLat APPLETON_TOWER = new LngLat(APPLETON_LONGITUDE, APPLETON_LATITUDE);
+    private DataParser dataParser;
     public boolean prepareToReturn;
     private final LngLat startPos;
     private LngLat dronePos;
@@ -23,7 +23,6 @@ public class Drone {
     private int remainBattery;
     private int ticksSinceStartOfCalculation;
     private List<Flightpath> flightpaths;
-    private final MapInitialization mapInitialization;
     private List<Order> orderDelivered;
     private List<Order> allOrders;
 
@@ -46,15 +45,10 @@ public class Drone {
     public LngLat getStartPos() { return this.startPos; }
 
 
-
-    /**
-     * Create the drone
-     * @param startPos starting position of the drone, usually Appleton Tower
-     */
-    public Drone(MapInitialization mapInitialization, LngLat startPos) {
-        this.mapInitialization = mapInitialization;
-        this.startPos = startPos;
-        this.dronePos = new LngLat (startPos.lng, startPos.lat);
+    public Drone(DataParser dataParser) {
+        this.dataParser = dataParser;
+        this.startPos = APPLETON_TOWER;
+        this.dronePos = APPLETON_TOWER;
         this.currGoal = null;
         this.remainBattery = BATTERY;
         this.prepareToReturn = false;
@@ -64,11 +58,10 @@ public class Drone {
         this.ticksSinceStartOfCalculation = 0;
     }
 
-    public void initializeOrders(Restaurant[] restaurants, String year, String month, String day) throws JSONException, ParseException {
-        DataReadWrite dataReadWrite = new DataReadWrite();
-        List<JSONObject> rawOrders = dataReadWrite.readOrders(year,month,day);
+    public void initializeOrders(Restaurant[] restaurants) {
+        List<JSONObject> rawOrderData = this.dataParser.getRawOrderData();
 
-        for (JSONObject rawOrder: rawOrders) {
+        for (JSONObject rawOrder: rawOrderData) {
             JSONArray numItems = (JSONArray) rawOrder.get("orderItems");
             String[] orderItems = new String[numItems.length()];
 
@@ -76,8 +69,11 @@ public class Drone {
                 orderItems[i] = numItems.get(i).toString();
             }
 
-            Restaurant restaurant = Restaurant.getRestaurantFromItem(restaurants, orderItems[0]);
-            LngLat restaurantLoc = new LngLat(restaurant.getLongitude(), restaurant.getLatitude());
+            Restaurant restaurant = Restaurant.getRestaurantByItem(restaurants, orderItems[0]);
+            LngLat restaurantLoc = null;
+            if (restaurant != null) {
+                restaurantLoc = new LngLat(restaurant.getLongitude(), restaurant.getLatitude());
+            }
 
             String orderNo = rawOrder.get("orderNo").toString();
             String orderDate = rawOrder.get("orderDate").toString();
@@ -86,8 +82,13 @@ public class Drone {
             String cvv = rawOrder.get("cvv").toString();
             int priceTotalInPence = (int) rawOrder.get("priceTotalInPence");
 
-            String orderOutcome = Order.getOrderOutcome(restaurants, orderItems, creditCardNumber, creditCardExpiry,
-                    cvv, orderDate, priceTotalInPence);
+            String orderOutcome;
+            try {
+                orderOutcome = Order.getOrderOutcome(restaurants, orderItems, creditCardNumber, creditCardExpiry,
+                        cvv, orderDate, priceTotalInPence);
+            } catch (ParseException e) {
+                throw new RuntimeException(e);
+            }
 
             this.allOrders.add(new Order(orderNo, orderDate, restaurantLoc, creditCardNumber, creditCardExpiry,
                     cvv, orderItems, priceTotalInPence, orderOutcome));
@@ -113,6 +114,13 @@ public class Drone {
     }
 
 
+    public double getMinMoves(Order order){
+        LngLat restaurantLoc = order.getRestaurantLoc();
+        double minDist = this.startPos.distanceTo(restaurantLoc)*2;
+        return minDist/LngLat.LENGTH_OF_MOVE;
+    }
+
+
     public void droneMove(Order order){
         Clock clock = Clock.systemDefaultZone();
         long start;
@@ -132,7 +140,7 @@ public class Drone {
 
                 start = clock.millis();
 
-                LngLat newPos = this.dronePos.move(this.mapInitialization, this.currGoal);
+                LngLat newPos = this.dronePos.move(this.dataParser, this.currGoal);
 
                 end = clock.millis();
                 this.ticksSinceStartOfCalculation += end - start;
@@ -209,10 +217,4 @@ public class Drone {
             }
         }
     }
-
-    // TODO: Implement bug2 algorithm
-    private void Bug2Algorithm(LngLat goalPos){
-
-    }
-
 }

@@ -1,12 +1,5 @@
 package uk.ac.ed.inf;
 
-import org.json.JSONArray;
-import org.json.JSONException;
-
-import java.util.HashMap;
-import java.util.List;
-
-
 public class Deliveries {
     String orderNo;
     String orderOutcome;

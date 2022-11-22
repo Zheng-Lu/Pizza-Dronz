@@ -5,12 +5,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.io.IOException;
-import java.net.MalformedURLException;
 import java.net.URL;
-import java.time.Duration;
-import java.time.Instant;
-import java.util.Arrays;
-import java.util.HashMap;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class Restaurant {
@@ -53,7 +48,6 @@ public class Restaurant {
      * Method that retrieving restaurant data from the REST service
      * @param serverBaseAddress url of server base address
      * @return an array of Restaurants which are defined (including the menus)
-     * @throws IOException while lack of input (files/url/...)
      */
     public static Restaurant[] getRestaurantsFromRestServer(URL serverBaseAddress) {
         ObjectMapper mapper = new ObjectMapper();
@@ -70,9 +64,7 @@ public class Restaurant {
     }
 
 
-    // TODO
     public static Restaurant getRestaurantByItem(Restaurant[] restaurants, String orderItem) {
-
         for (Restaurant restaurant : restaurants){
             for (Menu menu : restaurant.getMenu()) {
                 if (orderItem.equals(menu.getName())) {
@@ -80,20 +72,6 @@ public class Restaurant {
                 }
             }
         }
-
         return null;
-    }
-
-    public static Restaurant getRestaurantFromItem(Restaurant[] restaurants, String itemName) {
-        HashMap<String, Restaurant> restaurantItemMap = new HashMap<>();
-
-        for (Restaurant restaurant : restaurants){
-            for (Menu menu : restaurant.getMenu()){
-                restaurantItemMap.put(menu.getName(), restaurant);
-            }
-        }
-
-        return restaurantItemMap.get(itemName);
-
     }
 }

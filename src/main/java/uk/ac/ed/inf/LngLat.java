@@ -239,14 +239,15 @@ public class LngLat {
     /**
      * Test if going to the next position from current position is outside No-Fly-Zone
      *
-     * @param mapInitialization the map of the drone navigating
+     * @param dataParser the map of the drone navigating
      * @param nextPos the position to be tested
      * @return outside No-Fly-Zone or not
      */
-    public boolean isOutsideNoFlyZone(MapInitialization mapInitialization, LngLat nextPos){
+    public boolean isOutsideNoFlyZone(DataParser dataParser, LngLat nextPos){
         Line2D path = new Line2D.Double(this.lat, this.lng,
                 nextPos.getLat(), nextPos.getLng());
-        List<Polygon> noFlyZones = mapInitialization.getNoFlyZones();
+//        List<Polygon> noFlyZones = mapInitialization.getNoFlyZones();
+        List<Polygon> noFlyZones = dataParser.getNoFlyZones();
 
         // for every line segment of every zone,
         // test if it intersects with the line segment of the current move
@@ -272,18 +273,18 @@ public class LngLat {
      * outside no-fly-zone
      * if next move not valid, modify angle in +10,-10, +20,-20
      *
-     * @param mapInitialization the map to traverse
+     * @param dataParser the map to traverse
      * @param destPos desired position of the drone
      * @return the next valid move
      */
-    public LngLat move(MapInitialization mapInitialization, LngLat destPos){
+    public LngLat move(DataParser dataParser, LngLat destPos){
         double preAngle = this.angle;
         this.angle = calculateAngle(destPos);
         LngLat nextPos = nextPosition(getDirectionByAngle(this.angle));
         double adjustment = 22.5;
 
         // if the move is not valid, increase the angle until it is valid
-        while ( !(isOutsideNoFlyZone(mapInitialization, nextPos))){
+        while ( !(isOutsideNoFlyZone(dataParser, nextPos))){
             this.angle += adjustment;
             // go back to previous location is forbidden, since it might cause the drone trap in a point
             if (Math.abs(preAngle - this.angle) == 180){
