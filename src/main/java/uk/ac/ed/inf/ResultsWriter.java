@@ -55,7 +55,7 @@ public class ResultsWriter {
             jsonObject.addProperty("angle", path.angle);
             jsonObject.addProperty("toLongitude", path.toLongitude);
             jsonObject.addProperty("toLatitude", path.toLatitude);
-            jsonObject.addProperty("ticksSinceStartOfCalculation", path.ticksSinceStartOfCalculation);
+            jsonObject.addProperty("ticksSinceStartOfCalculation", path.getTicksSinceStartOfCalculation());
             jsonArray.add(jsonObject);
         }
 

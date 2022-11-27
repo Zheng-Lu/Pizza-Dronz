@@ -179,8 +179,8 @@ public class Drone {
                 LngLat newPos = this.dronePos.move(this.dataParser, this.currGoal);
 
                 end = clock.millis();
-                this.ticksSinceStartOfCalculation += end - start;
 
+                this.ticksSinceStartOfCalculation += end - start + 1;
                 Flightpath thisMove = new Flightpath(order.getOrderNo(), this.dronePos.getLng(),
                         this.dronePos.getLat(), this.dronePos.getAngle(), newPos.getLng(), newPos.getLat(),
                         this.ticksSinceStartOfCalculation);
@@ -199,7 +199,7 @@ public class Drone {
                     this.dronePos = this.dronePos.nextPosition(LngLat.Direction.Null);
 
                     end = clock.millis();
-                    this.ticksSinceStartOfCalculation += end - start;
+                    this.ticksSinceStartOfCalculation += end - start + 1;
 
                     Flightpath hoverMove = new Flightpath(order.getOrderNo(), this.dronePos.getLng(),
                             this.dronePos.getLat(), LngLat.Direction.Null.getValue(), this.dronePos.getLng(), this.dronePos.getLat(),
@@ -212,13 +212,22 @@ public class Drone {
                     this.prepareToReturn = true;
                     this.currGoal = this.startPos;
 
+
+
                 }
             } else {
                 Collections.reverse(backtrack_path);
 
                 for (Flightpath thisMove : backtrack_path) {
 
-                    this.flightpaths.add(thisMove);
+                    this.ticksSinceStartOfCalculation += 1;
+
+                    Flightpath returnMove = new Flightpath(thisMove.orderNo, thisMove.fromLongitude,
+                            thisMove.fromLatitude, thisMove.angle, thisMove.toLongitude, thisMove.toLatitude,
+                            this.ticksSinceStartOfCalculation);
+
+
+                    this.flightpaths.add(returnMove);
 
                     this.dronePos.setLngLat(new LngLat(thisMove.fromLongitude, thisMove.fromLatitude));
 
@@ -234,8 +243,9 @@ public class Drone {
 
                     start = clock.millis();
                     this.dronePos = this.dronePos.nextPosition(LngLat.Direction.Null);
+
                     end = clock.millis();
-                    this.ticksSinceStartOfCalculation += end - start;
+                    this.ticksSinceStartOfCalculation += end - start + 1;
 
                     Flightpath hoverMove = new Flightpath(order.getOrderNo(), this.dronePos.getLng(),
                             this.dronePos.getLat(), -999, this.dronePos.getLng(), this.dronePos.getLat(),
@@ -245,6 +255,7 @@ public class Drone {
 
                     this.remainBattery -= 1;
                     this.prepareToReturn = false;
+
                 }
 
                 System.out.println("-----> Took " + (lastTimeRemainBattery - this.remainBattery) + " Moves \n");

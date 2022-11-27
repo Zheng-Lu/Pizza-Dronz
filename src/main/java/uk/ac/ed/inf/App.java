@@ -5,9 +5,13 @@ import java.net.URL;
 import java.text.DateFormat;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
+import java.time.Duration;
+import java.time.Instant;
+import java.time.LocalDate;
 import java.util.List;
 
 import com.mapbox.geojson.Feature;
+import org.json.JSONException;
 
 import static uk.ac.ed.inf.Order.OrderOutcome.ValidButNotDelivered;
 
@@ -72,61 +76,136 @@ public class App {
      * <li>[2] - Seed for randomness</li>
      * </ul>
      */
-    public static void main(String[] args) {
-        if (isDateValid(args[0]) && isValidURL(args[1])) {
-            String[] date = args[0].split("-");
-            String year = date[0];
-            String month = date[1];
-            String day = date[2];
+//    public static void main(String[] args) {
+//        if (isDateValid(args[0]) && isValidURL(args[1])) {
+//            String[] date = args[0].split("-");
+//            String year = date[0];
+//            String month = date[1];
+//            String day = date[2];
+//
+//            String baseAddress = args[1];
+//
+//            String seed = args[2];
+//
+//            // Initialize order data parsed from server
+//            DataParser dataParser = new DataParser(baseAddress, year, month, day);
+//            Drone drone = new Drone(dataParser);
+//
+//            // Initialize all the orders at given data
+//            drone.initializeOrders(baseAddress);
+//            List<Order> orders = drone.getAllOrders();
+//
+//            // deliver all orders
+//            for (int i = 0; i < orders.size(); i++){
+//                Order currOrder = orders.get(i);
+//
+//                if (currOrder.getOrderOutcome().equals(ValidButNotDelivered.toString())) {
+//
+//                    if (drone.haveNoEnoughBattery(currOrder)){
+//                        System.out.println("DRONE: No enough battery to deliver the rest orders");
+//                        break;
+//                    }
+//
+//                    drone.droneMove(currOrder);
+//
+//                } else {
+//                    System.out.printf("DRONE: Invalid Order {orderNo: %s} %n", currOrder.getOrderNo());
+//                    System.out.println("-----> " + currOrder.getOrderOutcome() + "\n");
+//                }
+//            }
+//            drone.getOrdersStatistics();
+//
+//            List<Flightpath> flightpath = drone.getFlightpaths();
+//            List<Feature> landmarks = dataParser.getLandmarks();
+//
+//            ResultsWriter resultsWriter = new ResultsWriter(year,month,day);
+//
+//            // create the result files
+//            resultsWriter.writeDroneGeojson(landmarks, flightpath);
+//            resultsWriter.writeFlightpathJson(flightpath);
+//            resultsWriter.writeDeliveriesJson(drone.getAllOrders());
+//
+//        } else {
+//            if (!isDateValid(args[0])){
+//                throw new IllegalArgumentException("Invalid date input");
+//            } else if (!isValidURL(args[1])) {
+//                throw new IllegalArgumentException("Invalid URL input");
+//            }
+//        }
+//    }
 
-            String baseAddress = args[1];
 
-            String seed = args[2];
+        public static void main(String[] args) throws MalformedURLException, JSONException, ParseException {
+        Instant start = Instant.now();
 
-            // Initialize order data parsed from server
-            DataParser dataParser = new DataParser(baseAddress, year, month, day);
-            Drone drone = new Drone(dataParser);
+        LocalDate startDate = LocalDate.parse("2023-01-01");
+        LocalDate endDate   = LocalDate.parse("2023-05-31");
+        for (LocalDate date = startDate; date.isBefore(endDate); date = date.plusDays(1)) {
 
-            // Initialize all the orders at given data
-            drone.initializeOrders(baseAddress);
-            List<Order> orders = drone.getAllOrders();
+            Instant startTiming = Instant.now();
 
-            // deliver all orders
-            for (int i = 0; i < orders.size(); i++){
-                Order currOrder = orders.get(i);
+            if (isDateValid(String.valueOf(date)) && isValidURL("https://ilp-rest.azurewebsites.net")) {
+                String year = String.valueOf(date).split("-")[0];
+                String month = String.valueOf(date).split("-")[1];
+                String day = String.valueOf(date).split("-")[2];
 
-                if (currOrder.getOrderOutcome().equals(ValidButNotDelivered.toString())) {
+                String baseAddress = "https://ilp-rest.azurewebsites.net";
 
-                    if (drone.haveNoEnoughBattery(currOrder)){
-                        System.out.println("DRONE: No enough battery to deliver the rest orders");
-                        break;
+                String seed = "cabbage";
+
+                // Initialize order data parsed from server
+                DataParser dataParser = new DataParser(baseAddress, year, month, day);
+                Drone drone = new Drone(dataParser);
+
+                // Initialize all the orders at given data
+                drone.initializeOrders(baseAddress);
+                List<Order> orders = drone.getAllOrders();
+
+                // deliver all orders
+                for (int i = 0; i < orders.size(); i++){
+                    Order currOrder = orders.get(i);
+
+                    if (currOrder.getOrderOutcome().equals(ValidButNotDelivered.toString())) {
+
+                        if (drone.haveNoEnoughBattery(currOrder)){
+                            System.out.println("DRONE: No enough battery to deliver the rest orders");
+                            break;
+                        }
+
+                        drone.droneMove(currOrder);
+
+                    } else {
+                        System.out.printf("DRONE: Invalid Order {orderNo: %s} %n", currOrder.getOrderNo());
+                        System.out.println("-----> " + currOrder.getOrderOutcome() + "\n");
                     }
+                }
+                drone.getOrdersStatistics();
 
-                    drone.droneMove(currOrder);
+                List<Flightpath> flightpath = drone.getFlightpaths();
+                List<Feature> landmarks = dataParser.getLandmarks();
 
-                } else {
-                    System.out.printf("DRONE: Invalid Order {orderNo: %s} %n", currOrder.getOrderNo());
-                    System.out.println("-----> " + currOrder.getOrderOutcome() + "\n");
+                ResultsWriter resultsWriter = new ResultsWriter(year,month,day);
+
+                // create the result files
+                resultsWriter.writeDroneGeojson(landmarks, flightpath);
+                resultsWriter.writeFlightpathJson(flightpath);
+                resultsWriter.writeDeliveriesJson(drone.getAllOrders());
+
+            } else {
+                if (!isDateValid(args[0])){
+                    throw new IllegalArgumentException("Invalid date input");
+                } else if (!isValidURL(args[1])) {
+                    throw new IllegalArgumentException("Invalid URL input");
                 }
             }
-            drone.getOrdersStatistics();
 
-            List<Flightpath> flightpath = drone.getFlightpaths();
-            List<Feature> landmarks = dataParser.getLandmarks();
-
-            ResultsWriter resultsWriter = new ResultsWriter(year,month,day);
-
-            // create the result files
-            resultsWriter.writeDroneGeojson(landmarks, flightpath);
-            resultsWriter.writeFlightpathJson(flightpath);
-            resultsWriter.writeDeliveriesJson(drone.getAllOrders());
-
-        } else {
-            if (!isDateValid(args[0])){
-                throw new IllegalArgumentException("Invalid date input");
-            } else if (!isValidURL(args[1])) {
-                throw new IllegalArgumentException("Invalid URL input");
-            }
+            Instant endTiming = Instant.now();
+            System.out.println(Duration.between(startTiming, endTiming));
         }
+
+        Instant end = Instant.now();
+        System.out.println(Duration.between(start, end) + "\n");
     }
+
+
 }

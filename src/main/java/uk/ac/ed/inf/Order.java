@@ -175,7 +175,7 @@ public class Order {
      * @throws NullPointerException If the given input is null.
      */
     private static boolean isValidCVV(String cvv) {
-        String regex = "^[0-9]{3,4}$";
+        String regex = "^[0-9]{3}$";
         Pattern p = Pattern.compile(regex);
 
         if (cvv == null) {

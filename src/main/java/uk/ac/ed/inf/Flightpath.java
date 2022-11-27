@@ -13,6 +13,14 @@ public class Flightpath {
     double toLatitude;
     int ticksSinceStartOfCalculation;
 
+    /* Getters and Setters */
+
+    public int getTicksSinceStartOfCalculation() {return ticksSinceStartOfCalculation;}
+
+    public void setTicksSinceStartOfCalculation(int ticksSinceStartOfCalculation) {
+        this.ticksSinceStartOfCalculation = ticksSinceStartOfCalculation;
+    }
+
     /**
      * Create one step in flightpath
      * @param orderNo order number
