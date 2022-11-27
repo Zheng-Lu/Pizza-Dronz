@@ -7,6 +7,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
 import java.net.URL;
 
+/**
+ * The class stores the information of a restaurant (e.g., restaurant's name, location, and menu)
+ */
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class Restaurant {
     @JsonProperty("name")
@@ -18,31 +21,26 @@ public class Restaurant {
     @JsonProperty("menu")
     private Menu[] menus;
 
-    // Getters
+    /* Getters */
+
+    /** @return the name of the restaurant */
     public String getRestaurantName() {
         return name;
     }
 
+    /** @return the longitude of the restaurant location */
     public Double getLongitude() {
         return longitude;
     }
 
-    public Double getLatitude() {
-        return latitude;
-    }
+    /** @return the latitude of the restaurant location */
+    public Double getLatitude() {return latitude;}
 
+    /** @return the pizza menus of the restaurant */
     public Menu[] getMenu() {
         return menus;
     }
 
-    // Setters
-    public void setRestaurantName(String newName) {
-        this.name = newName;
-    }
-
-    public void setMenus(Menu[] newMenus) {
-        this.menus = newMenus;
-    }
 
     /**
      * Method that retrieving restaurant data from the REST service
@@ -64,6 +62,12 @@ public class Restaurant {
     }
 
 
+    /**
+     * Find the corresponding restaurant from given restaurant array according to a given ordered item
+     * @param restaurants Array of participated restaurants
+     * @param orderItem Item from order, also known as pizza name
+     * @return the corresponding restaurant
+     */
     public static Restaurant getRestaurantByItem(Restaurant[] restaurants, String orderItem) {
         for (Restaurant restaurant : restaurants){
             for (Menu menu : restaurant.getMenu()) {

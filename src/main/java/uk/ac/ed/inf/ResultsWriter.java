@@ -13,13 +13,23 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * The class to write the result produced by drone into files:
+ * flightpath-YYYY-MM-DD.json, deliveries-YYYY-MM-DD.json and drone-YYYY-MM-DD.geojson.
+ */
 public class ResultsWriter {
-    public final String RESULT_FOLDER = "resultfiles" + File.separator;
+    private final String RESULT_FOLDER = "resultfiles" + File.separator;
+    private final String year;
+    private final String month;
+    private final String day;
 
-    public String year;
-    public String month;
-    public String day;
-
+    /**
+     * Constructor of the ResultsWriter class,
+     * which requires input date to
+     * @param year Given year
+     * @param month Given month
+     * @param day Given day
+     */
     public ResultsWriter(String year, String month, String day) {
         this.year = year;
         this.month = month;
@@ -31,7 +41,7 @@ public class ResultsWriter {
      * @param flightpaths the flightpath of the drone in a given day
      */
     public void writeFlightpathJson(List<Flightpath> flightpaths) {
-        String fileName = RESULT_FOLDER + "flightpath-" + this.year + "-" + this.month + "-" + this.day + ".json";
+        String fileName = "flightpath-" + this.year + "-" + this.month + "-" + this.day + ".json";
 
         //Creating a JSONArray object
         JsonArray jsonArray = new JsonArray();
@@ -50,7 +60,7 @@ public class ResultsWriter {
         }
 
         try {
-            FileWriter file = new FileWriter(fileName);
+            FileWriter file = new FileWriter(RESULT_FOLDER + fileName);
             file.write(jsonArray.toString());
             file.close();
         } catch (IOException e) {
@@ -66,7 +76,7 @@ public class ResultsWriter {
      * @param orders the orders of the drone in a given day
      */
     public void writeDeliveriesJson(List<Order> orders) {
-        String fileName = RESULT_FOLDER + "deliveries-" + this.year + "-" + this.month + "-" + this.day + ".json";
+        String fileName = "deliveries-" + this.year + "-" + this.month + "-" + this.day + ".json";
 
         //Creating a JSONArray object
         JsonArray jsonArray = new JsonArray();
@@ -81,7 +91,7 @@ public class ResultsWriter {
         }
 
         try {
-            FileWriter file = new FileWriter(fileName);
+            FileWriter file = new FileWriter(RESULT_FOLDER + fileName);
             file.write(jsonArray.toString());
             file.close();
         } catch (IOException e) {
@@ -103,7 +113,7 @@ public class ResultsWriter {
      */
     public void writeDroneGeojson(List<Feature> landmarks, List<Flightpath> allFlightpath) {
         String flightpathJson;
-        String fileName = RESULT_FOLDER + "drone-" + this.year + "-" + this.month + "-" + this.day + ".geojson";
+        String fileName = "drone-" + this.year + "-" + this.month + "-" + this.day + ".geojson";
 
         if (allFlightpath.size() == 0) {
             flightpathJson = "";
@@ -130,7 +140,7 @@ public class ResultsWriter {
 
         // write the geojson file
         try {
-            FileWriter file = new FileWriter(fileName);
+            FileWriter file = new FileWriter(RESULT_FOLDER + fileName);
             file.write(flightpathJson);
             file.close();
         } catch (IOException e) {

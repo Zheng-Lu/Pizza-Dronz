@@ -4,28 +4,30 @@ import java.util.HashMap;
 import java.util.List;
 import java.awt.geom.Line2D;
 import java.util.Objects;
-
 import com.mapbox.geojson.Polygon;
 import com.mapbox.geojson.Point;
 
+/**
+ * Class to define the location for the objects (e.g., drone, restaurants) and fundamental methods
+ */
 public class LngLat {
 
     /* Constants */
     public final static double DISTANCE_TOLERANCE = 0.00015;
     public final static double LENGTH_OF_MOVE = 0.00015;
-    public final static double HOVERING = -999;
-    public final static HashMap<Direction, Double> directionHashMap = initMap();
-    private static HashMap<Direction, Double> initMap() {
+
+    private final HashMap<Direction, Double> directionHashMap = initMap();
+    private HashMap<Direction, Double> initMap() {
         HashMap<Direction, Double> hashmap = new HashMap<>();
         for (Direction dir : Direction.values()){
-            hashmap.put(dir, dir.angle);
+            hashmap.put(dir, dir.value);
         }
         return hashmap;
     }
 
     /** coordinate of the drone */
-    public double lng;
-    public double lat;
+    private double lng;
+    private double lat;
     private double angle;
 
     /**
@@ -40,15 +42,19 @@ public class LngLat {
         this.angle = 0.0;
     }
 
-    /** getters and setters */
+    /* Getters and Setters */
+
+    /**@return the longitude of the current LngLat object*/
     public double getLng(){
         return this.lng;
     }
 
+    /**@return the latitude of the current LngLat object*/
     public double getLat(){
         return this.lat;
     }
 
+    /**@return the anticlockwise angle between the current LngLat object and East direction */
     public double getAngle(){
         return this.angle;
     }
@@ -58,25 +64,26 @@ public class LngLat {
         this.lat = newPos.getLat();
     }
 
+
     /**
      * Test if the drone is in the central area
      *
      * @return true if the drone is inside the central area or on the boundary of central area, false if it is outside
      */
-    public boolean inCentralArea() {
-        List<List<Double>> LngLats = CentralArea.getCentralAreaLngLats();
-        List<Double> Lngs = LngLats.get(0);
-        List<Double> Lats = LngLats.get(1);
+    public boolean inCentralArea(DataParser dataParser) {
+        List<LngLat> centralArea = dataParser.getCentralArea();
 
         // Number of vertices n
-        int n = Lngs.size();
+        int n = centralArea.size();
 
         // Detect if it is on vertex or edge
-        if (isOnPolygonOutline(Lngs.get(0), Lats.get(0), Lngs.get(n - 1), Lats.get(n - 1))){
+        if (isOnPolygonOutline(centralArea.get(0).lng, centralArea.get(0).lat,
+                centralArea.get(n - 1).lng, centralArea.get(n - 1).lat)){
             return true;
         }
         for (int i = 0; i < n - 1; i++) {
-            if (isOnPolygonOutline(Lngs.get(i), Lats.get(i), Lngs.get(i+1), Lats.get(i+1))) {
+            if (isOnPolygonOutline(centralArea.get(i).lng, centralArea.get(i).lat,
+                    centralArea.get(i+1).lng, centralArea.get(i+1).lat)) {
                 return true;
             }
         }
@@ -85,8 +92,13 @@ public class LngLat {
         int i, j;
         boolean res = false;
         for (i = 0, j = n - 1; i < n; j = i++) {
-            if (((Lats.get(i) > lat) != (Lats.get(j) > lat)) &&
-                    (lng < (Lngs.get(j) - Lngs.get(i)) * (lat - Lats.get(i)) / (Lats.get(j) - Lats.get(i)) + Lngs.get(i))){
+            double lat_i =  centralArea.get(i).lat;
+            double lat_j =  centralArea.get(j).lat;
+            double lng_i =  centralArea.get(i).lng;
+            double lng_j =  centralArea.get(j).lng;
+
+            if (((lat_i > lat) != (lat_j > lat)) &&
+                    (lng < (lng_j - lng_i) * (lat - lat_i) / (lat_j - lat_i) + lng_i)){
                 res = !res;
             }
         }
@@ -104,7 +116,7 @@ public class LngLat {
      * @param y2 the latitude of second location point
      * @return true if the drone is on the boundary of the polygon area, false if not
      */
-    public boolean isOnPolygonOutline(double x1, double y1, double x2, double y2) {
+    private boolean isOnPolygonOutline(double x1, double y1, double x2, double y2) {
         return Math.hypot(x1-lng, y1-lat) + Math.hypot(lng-x2, lat-y2) == Math.hypot(x1-x2, y1-y2);
     }
 
@@ -143,6 +155,9 @@ public class LngLat {
         return distanceTo(pos) < DISTANCE_TOLERANCE;
     }
 
+    /**
+     *  This enum class documents the direction from 16 major compass directions
+     */
     public enum Direction {
         East (0),
         East_North_East (22.5),
@@ -162,11 +177,16 @@ public class LngLat {
         East_South_East (337.5),
         Null (-999);
 
-        private final double angle;
+        private final double value;
 
-        Direction(double angle) {
-            this.angle = angle;
+        Direction(double value) {
+            this.value = value;
         }
+
+        public double getValue() {
+            return this.value;
+        }
+
     }
 
     /**
@@ -177,10 +197,10 @@ public class LngLat {
      */
     public LngLat nextPosition (Direction direction){
         // when drone is hovering
-        if (direction.angle == -999){
+        if (direction.value == -999){
             return this;
         } else {
-            double angle = Math.toRadians(direction.angle);
+            double angle = Math.toRadians(direction.value);
             double newLong = this.lng + Math.cos(angle) * LENGTH_OF_MOVE;
             double newLat = this.lat + Math.sin(angle) * LENGTH_OF_MOVE;
 
@@ -226,9 +246,15 @@ public class LngLat {
     }
 
 
+    /**
+     * A helper function to convert the given valid angle into direction
+     * @param angle angle that link to a direction
+     * @return if angle is valid (should be the multiple of 22.5 in range [0,360)),
+     * a direction from enum class would be return, otherwise return null
+     */
     private Direction getDirectionByAngle(double angle){
         for (Direction direction: directionHashMap.keySet()) {
-            if (Objects.equals(angle, direction.angle)){
+            if (Objects.equals(angle, direction.value)){
                 return direction;
             }
         }
@@ -243,10 +269,9 @@ public class LngLat {
      * @param nextPos the position to be tested
      * @return outside No-Fly-Zone or not
      */
-    public boolean isOutsideNoFlyZone(DataParser dataParser, LngLat nextPos){
+    private boolean isOutsideNoFlyZone(DataParser dataParser, LngLat nextPos){
         Line2D path = new Line2D.Double(this.lat, this.lng,
                 nextPos.getLat(), nextPos.getLng());
-//        List<Polygon> noFlyZones = mapInitialization.getNoFlyZones();
         List<Polygon> noFlyZones = dataParser.getNoFlyZones();
 
         // for every line segment of every zone,

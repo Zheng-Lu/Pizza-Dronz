@@ -3,6 +3,8 @@ package uk.ac.ed.inf;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
+import java.net.MalformedURLException;
+import java.net.URL;
 import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -10,6 +12,9 @@ import java.util.List;
 
 import java.time.Clock;
 
+/**
+ * The drone class contains methods about navigation, order initialization that a drone need for delivery
+ */
 public class Drone {
     public static final int BATTERY = 2000;
     public static final double APPLETON_LONGITUDE = -3.186874;
@@ -26,25 +31,33 @@ public class Drone {
     private List<Order> orderDelivered;
     private List<Order> allOrders;
 
-    /** getters  */
+    /* getters  */
+
+    /**@return the list of the orders that have already been delivered by drone */
     public List<Order> getOrderDelivered(){
         return this.orderDelivered;
     }
+
+    /**@return the list of all orders at a given days */
     public List<Order> getAllOrders(){
         return this.allOrders;
     }
 
+    /**@return the list of flightpaths that moved by drone */
     public List<Flightpath> getFlightpaths(){
         return this.flightpaths;
     }
 
+    /**@return the amount of remain battery that drone currently has */
     public int getRemainBattery(){
         return this.remainBattery;
     }
-    public LngLat getCurrGoal() { return this.currGoal; }
-    public LngLat getStartPos() { return this.startPos; }
 
 
+    /**
+     * Create the drone
+     * @param dataParser the dataParser parse the required data by drone for order delivery
+     */
     public Drone(DataParser dataParser) {
         this.dataParser = dataParser;
         this.startPos = APPLETON_TOWER;
@@ -58,8 +71,18 @@ public class Drone {
         this.ticksSinceStartOfCalculation = 0;
     }
 
-    public void initializeOrders(Restaurant[] restaurants) {
+    /**
+     * Initialize all daily orders for drone before flying
+     * @param baseAddress list of participated restaurants retrieved from the web server
+     */
+    public void initializeOrders(String baseAddress) {
         List<JSONObject> rawOrderData = this.dataParser.getRawOrderData();
+        Restaurant[] restaurants;
+        try {
+            restaurants = Restaurant.getRestaurantsFromRestServer(new URL(baseAddress));
+        } catch (MalformedURLException e) {
+            throw new RuntimeException(e);
+        }
 
         for (JSONObject rawOrder: rawOrderData) {
             JSONArray numItems = (JSONArray) rawOrder.get("orderItems");
@@ -99,6 +122,9 @@ public class Drone {
         Collections.reverse(this.allOrders);
     }
 
+    /**
+     * Get delivery statistics displayed in terminal
+     */
     public void getOrdersStatistics() {
         int validNumOrders = 0;
 
@@ -108,19 +134,29 @@ public class Drone {
                 validNumOrders += 1;
             }
         }
+        System.out.println("<-------------Result------------->");
         System.out.println("Number of invalid orders: " + (getAllOrders().size() - validNumOrders));
         System.out.println("Orders delivered: " + getOrderDelivered().size() + "/" + validNumOrders);
         System.out.println("Remaining battery after delivery: " + getRemainBattery() + "\n");
     }
 
 
-    public double getMinMoves(Order order){
+    /**
+     * Check whether the drone have enough battery to deliver the given order
+     * @param order given order
+     * @return true if the drone have no enough battery to deliver, false otherwise
+     */
+    public boolean haveNoEnoughBattery(Order order){
         LngLat restaurantLoc = order.getRestaurantLoc();
         double minDist = this.startPos.distanceTo(restaurantLoc)*2;
-        return minDist/LngLat.LENGTH_OF_MOVE;
+        return minDist/LngLat.LENGTH_OF_MOVE > getRemainBattery();
     }
 
 
+    /**
+     * Method that actually move the drone to deliver given order
+     * @param order given order
+     */
     public void droneMove(Order order){
         Clock clock = Clock.systemDefaultZone();
         long start;
@@ -166,7 +202,7 @@ public class Drone {
                     this.ticksSinceStartOfCalculation += end - start;
 
                     Flightpath hoverMove = new Flightpath(order.getOrderNo(), this.dronePos.getLng(),
-                            this.dronePos.getLat(), -999, this.dronePos.getLng(), this.dronePos.getLat(),
+                            this.dronePos.getLat(), LngLat.Direction.Null.getValue(), this.dronePos.getLng(), this.dronePos.getLat(),
                             this.ticksSinceStartOfCalculation);
 
                     this.flightpaths.add(hoverMove);
