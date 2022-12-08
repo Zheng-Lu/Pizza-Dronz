@@ -30,6 +30,7 @@ public class Drone {
     private List<Flightpath> flightpaths;
     private List<Order> orderDelivered;
     private List<Order> allOrders;
+    private List<Flightpath> backtrack_path;
 
     /* getters  */
 
@@ -68,6 +69,7 @@ public class Drone {
         this.flightpaths = new ArrayList<>();
         this.orderDelivered = new ArrayList<>();
         this.allOrders = new ArrayList<>();
+        this.backtrack_path  = new ArrayList<>();
         this.ticksSinceStartOfCalculation = 0;
     }
 
@@ -152,6 +154,92 @@ public class Drone {
         return minDist/LngLat.LENGTH_OF_MOVE > getRemainBattery();
     }
 
+    private void toGetOrder(Clock clock, Order order) {
+        // move a step and record it
+        long start = clock.millis();
+
+        LngLat newPos = this.dronePos.move(this.dataParser, this.currGoal);
+
+        long end = clock.millis();
+
+        this.ticksSinceStartOfCalculation += end - start + 1;
+        Flightpath moveToOrder = new Flightpath(order.getOrderNo(), this.dronePos.getLng(),
+                this.dronePos.getLat(), this.dronePos.getAngle(), newPos.getLng(), newPos.getLat(),
+                this.ticksSinceStartOfCalculation);
+
+        this.flightpaths.add(moveToOrder);
+        this.backtrack_path.add(moveToOrder);
+
+        this.dronePos.setLngLat(newPos);
+        this.remainBattery -= 1;
+
+
+        // hover if the drone is close to its target, while recording this step
+        if (this.dronePos.closeTo(this.currGoal)) {
+            start = clock.millis();
+
+            this.dronePos = this.dronePos.nextPosition(LngLat.Direction.Null);
+
+            end = clock.millis();
+            this.ticksSinceStartOfCalculation += end - start + 1;
+
+            Flightpath hovering = new Flightpath(order.getOrderNo(), this.dronePos.getLng(),
+                    this.dronePos.getLat(), LngLat.Direction.Null.getValue(), this.dronePos.getLng(),
+                    this.dronePos.getLat(), this.ticksSinceStartOfCalculation);
+
+            this.flightpaths.add(hovering);
+
+            this.remainBattery -= 1;
+
+            this.prepareToReturn = true;
+            this.currGoal = this.startPos;
+        }
+    }
+    
+    private void backtrack(Clock clock, Order order) {
+        Collections.reverse(this.backtrack_path);
+
+        for (Flightpath thisMove : this.backtrack_path) {
+
+            this.ticksSinceStartOfCalculation += 1;
+
+            Flightpath moveBack = new Flightpath(thisMove.orderNo, thisMove.fromLongitude,
+                    thisMove.fromLatitude, thisMove.angle, thisMove.toLongitude, thisMove.toLatitude,
+                    this.ticksSinceStartOfCalculation);
+
+
+            this.flightpaths.add(moveBack);
+
+            this.dronePos.setLngLat(new LngLat(thisMove.fromLongitude, thisMove.fromLatitude));
+
+            this.remainBattery -= 1;
+        }
+
+        // hover if the drone is close to its target, while recording this step
+        if (this.dronePos.closeTo(this.currGoal)) {
+
+            orderDelivered.add(order);
+            order.markDelivered();
+            System.out.printf("-----> Order {orderNo: %s} delivered %n", order.getOrderNo());
+
+            long start = clock.millis();
+            this.dronePos = this.dronePos.nextPosition(LngLat.Direction.Null);
+
+            long end = clock.millis();
+            this.ticksSinceStartOfCalculation += end - start + 1;
+
+            Flightpath hovering = new Flightpath(order.getOrderNo(), this.dronePos.getLng(),
+                    this.dronePos.getLat(), LngLat.Direction.Null.getValue(), this.dronePos.getLng(),
+                    this.dronePos.getLat(), this.ticksSinceStartOfCalculation);
+
+            this.flightpaths.add(hovering);
+
+            this.remainBattery -= 1;
+            this.prepareToReturn = false;
+
+        }
+    }
+
 
     /**
      * Method that actually move the drone to deliver given order
@@ -159,105 +247,21 @@ public class Drone {
      */
     public void droneMove(Order order){
         Clock clock = Clock.systemDefaultZone();
-        long start;
-        long end;
 
         System.out.printf("DRONE: Currently delivering order {orderNo: %s} %n", order.getOrderNo());
         int lastTimeRemainBattery = this.remainBattery;
 
         this.currGoal = order.getRestaurantLoc();
 
-        List<Flightpath> backtrack_path = new ArrayList<>();
+        this.backtrack_path = new ArrayList<>();
 
         // move the drone
         while (this.remainBattery > 0){
             if (!this.prepareToReturn){
-                // move a step and record it
-
-                start = clock.millis();
-
-                LngLat newPos = this.dronePos.move(this.dataParser, this.currGoal);
-
-                end = clock.millis();
-
-                this.ticksSinceStartOfCalculation += end - start + 1;
-                Flightpath thisMove = new Flightpath(order.getOrderNo(), this.dronePos.getLng(),
-                        this.dronePos.getLat(), this.dronePos.getAngle(), newPos.getLng(), newPos.getLat(),
-                        this.ticksSinceStartOfCalculation);
-
-                this.flightpaths.add(thisMove);
-                backtrack_path.add(thisMove);
-
-                this.dronePos.setLngLat(newPos);
-                this.remainBattery -= 1;
-
-
-                // hover if the drone is close to its target, while recording this step
-                if (this.dronePos.closeTo(this.currGoal)) {
-                    start = clock.millis();
-
-                    this.dronePos = this.dronePos.nextPosition(LngLat.Direction.Null);
-
-                    end = clock.millis();
-                    this.ticksSinceStartOfCalculation += end - start + 1;
-
-                    Flightpath hoverMove = new Flightpath(order.getOrderNo(), this.dronePos.getLng(),
-                            this.dronePos.getLat(), LngLat.Direction.Null.getValue(), this.dronePos.getLng(), this.dronePos.getLat(),
-                            this.ticksSinceStartOfCalculation);
-
-                    this.flightpaths.add(hoverMove);
-
-                    this.remainBattery -= 1;
-
-                    this.prepareToReturn = true;
-                    this.currGoal = this.startPos;
-
-
-
-                }
+                toGetOrder(clock, order);
             } else {
-                Collections.reverse(backtrack_path);
-
-                for (Flightpath thisMove : backtrack_path) {
-
-                    this.ticksSinceStartOfCalculation += 1;
-
-                    Flightpath returnMove = new Flightpath(thisMove.orderNo, thisMove.fromLongitude,
-                            thisMove.fromLatitude, thisMove.angle, thisMove.toLongitude, thisMove.toLatitude,
-                            this.ticksSinceStartOfCalculation);
-
-
-                    this.flightpaths.add(returnMove);
-
-                    this.dronePos.setLngLat(new LngLat(thisMove.fromLongitude, thisMove.fromLatitude));
-
-                    this.remainBattery -= 1;
-                }
-
-                // hover if the drone is close to its target, while recording this step
-                if (this.dronePos.closeTo(this.currGoal)) {
-
-                    orderDelivered.add(order);
-                    order.markDelivered();
-                    System.out.printf("-----> Order {orderNo: %s} delivered %n", order.getOrderNo());
-
-                    start = clock.millis();
-                    this.dronePos = this.dronePos.nextPosition(LngLat.Direction.Null);
-
-                    end = clock.millis();
-                    this.ticksSinceStartOfCalculation += end - start + 1;
-
-                    Flightpath hoverMove = new Flightpath(order.getOrderNo(), this.dronePos.getLng(),
-                            this.dronePos.getLat(), -999, this.dronePos.getLng(), this.dronePos.getLat(),
-                            this.ticksSinceStartOfCalculation);
-
-                    this.flightpaths.add(hoverMove);
-
-                    this.remainBattery -= 1;
-                    this.prepareToReturn = false;
-
-                }
-
+                backtrack(clock, order);
+                
                 System.out.println("-----> Took " + (lastTimeRemainBattery - this.remainBattery) + " Moves \n");
 
                 break;

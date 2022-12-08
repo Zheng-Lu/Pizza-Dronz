@@ -206,6 +206,14 @@ public class Order {
             throw new Exception(String.valueOf(OrderOutcome.InvalidPizzaCount));
         }
 
+        List<String> allMenu = new ArrayList<>();
+        for (Restaurant participant : participants){
+            // To store the menu which maps items to prices
+            for (Menu menu : participant.getMenu()){
+                allMenu.add(menu.getName());
+            }
+        }
+        
         for (Restaurant participant : participants){
             // To store the menu which maps items to prices
             HashMap<String, Integer> menuMap = new HashMap<>();
@@ -217,6 +225,8 @@ public class Order {
                 if (menuMap.containsKey(pizza)){
                     deliveryCost += menuMap.get(pizza);
                     remain.poll();
+                } else if (!allMenu.contains(pizza)) {
+                    throw new Exception(String.valueOf(OrderOutcome.InvalidPizzaNotDefined));
                 }
             }
 

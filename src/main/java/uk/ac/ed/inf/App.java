@@ -1,6 +1,5 @@
 package uk.ac.ed.inf;
 
-import java.net.MalformedURLException;
 import java.net.URL;
 import java.text.DateFormat;
 import java.text.ParseException;
@@ -11,7 +10,6 @@ import java.time.LocalDate;
 import java.util.List;
 
 import com.mapbox.geojson.Feature;
-import org.json.JSONException;
 
 import static uk.ac.ed.inf.Order.OrderOutcome.ValidButNotDelivered;
 
@@ -26,24 +24,27 @@ public class App {
      * @param date The given date
      * Return true if the given date is in specific date format and exists, false otherwise
      */
-    private static boolean isDateValid(String date)
-    {
+    private static boolean isValidDate(String date) {
         try {
-            DateFormat df = new SimpleDateFormat("yyyy-MM-dd");
-            df.setLenient(false);
-            df.parse(date);
+            DateFormat format = new SimpleDateFormat("yyyy-MM-dd");
+            format.setLenient(false);
+            format.parse(date);
 
             String[] d = date.split("-");
             int year = Integer.parseInt(d[0]);
-            if ( year <= 1975  || d[1].length() != 2 || d[2].length() != 2) {
+            if ( year != 2023 || d[1].length() != 2 || d[2].length() != 2) {
                 return false;
             }
 
-            return true;
+            LocalDate localDate = format.parse(date).toInstant().atZone(java.time.ZoneId.systemDefault()).toLocalDate();
+            LocalDate start = LocalDate.of(2022, 12, 31);
+            LocalDate end = LocalDate.of(2023, 5, 31);
+            return localDate.isAfter(start) && localDate.isBefore(end);
         } catch (ParseException e) {
             return false;
         }
     }
+
 
     /**
      * Check validity of input url
@@ -77,13 +78,20 @@ public class App {
      * </ul>
      */
 //    public static void main(String[] args) {
-//        if (isDateValid(args[0]) && isValidURL(args[1])) {
+//        if (args.length != 3){
+//            throw new IllegalArgumentException("Invalid number of arguments. 3 arguments are required");
+//        }
+//
+//        if (isValidDate(args[0]) && isValidURL(args[1])) {
 //            String[] date = args[0].split("-");
 //            String year = date[0];
 //            String month = date[1];
 //            String day = date[2];
 //
 //            String baseAddress = args[1];
+//            if (!baseAddress.endsWith("/")){
+//                baseAddress += "/";
+//            }
 //
 //            String seed = args[2];
 //
@@ -126,7 +134,7 @@ public class App {
 //            resultsWriter.writeDeliveriesJson(drone.getAllOrders());
 //
 //        } else {
-//            if (!isDateValid(args[0])){
+//            if (!isValidDate(args[0])){
 //                throw new IllegalArgumentException("Invalid date input");
 //            } else if (!isValidURL(args[1])) {
 //                throw new IllegalArgumentException("Invalid URL input");
@@ -134,8 +142,7 @@ public class App {
 //        }
 //    }
 
-
-        public static void main(String[] args) throws MalformedURLException, JSONException, ParseException {
+    public static void main(String[] args){
         Instant start = Instant.now();
 
         LocalDate startDate = LocalDate.parse("2023-01-01");
@@ -144,16 +151,17 @@ public class App {
 
             Instant startTiming = Instant.now();
 
-            if (isDateValid(String.valueOf(date)) && isValidURL("https://ilp-rest.azurewebsites.net")) {
+            if (isValidDate(String.valueOf(date)) && isValidURL("https://ilp-rest.azurewebsites.net")) {
                 String year = String.valueOf(date).split("-")[0];
                 String month = String.valueOf(date).split("-")[1];
                 String day = String.valueOf(date).split("-")[2];
 
                 String baseAddress = "https://ilp-rest.azurewebsites.net";
+                baseAddress += "/";
 
                 String seed = "cabbage";
 
-                // Initialize order data parsed from server
+                //Initialize order data parsed from server
                 DataParser dataParser = new DataParser(baseAddress, year, month, day);
                 Drone drone = new Drone(dataParser);
 
@@ -192,7 +200,7 @@ public class App {
                 resultsWriter.writeDeliveriesJson(drone.getAllOrders());
 
             } else {
-                if (!isDateValid(args[0])){
+                if (!isValidDate(args[0])){
                     throw new IllegalArgumentException("Invalid date input");
                 } else if (!isValidURL(args[1])) {
                     throw new IllegalArgumentException("Invalid URL input");
